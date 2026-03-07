@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Default Alive? — TechTO</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Feature Display', 'Georgia', 'serif'],
+            ui: ['Artex', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Webflow CSS -->
+  <link href="webflow-export/css/normalize.css" rel="stylesheet" type="text/css">
+  <link href="webflow-export/css/webflow.css" rel="stylesheet" type="text/css">
+  <link href="webflow-export/css/dev-techto.webflow.css" rel="stylesheet" type="text/css">
+  <style>
+    @font-face {
+      font-family: 'Feature Display';
+      src: url('./techto-brand/FeatureDisplay-Regular.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'Artex';
+      src: url('./techto-brand/Artex-Regular.ttf') format('truetype');
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Artex', system-ui, sans-serif; background: #fff; }
+
+    /* Hero gradient — exact match to Webflow .hero-gradient */
+    .hero-gradient {
+      z-index: 0;
+      background-image: linear-gradient(180deg, #ebff52, white);
+      height: 130px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      pointer-events: none;
+    }
+
+    /* Space content below fixed nav, above fixed bottom dock */
+    #root { padding-top: 80px; padding-bottom: 120px; }
+
+    /* Page fade-in — mirrors Webflow IX2 on-load animation */
+    @keyframes techtoFadeUp {
+      from { opacity: 0; transform: translate3d(0, 25%, 0); }
+      to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+    .fadein-1 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.05s both; }
+    .fadein-2 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.15s both; }
+    .fadein-3 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.25s both; }
+    .fadein-4 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.35s both; }
+    .fadein-5 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.45s both; }
+    .fadein-6 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.55s both; }
+  </style>
+  <!-- Webflow vh fix for mobile -->
+  <script>
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', vh + 'px');
+    window.addEventListener('resize', () => {
+      let vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', vh + 'px');
+    });
+  </script>
+</head>
+<body>
+
+  <!-- Webflow Nav — verbatim from export -->
+  <div data-animation="default" class="navbar2_component w-nav" data-easing2="ease" fs-scrolldisable-element="smart-nav" data-easing="ease" data-collapse="medium" role="banner" data-duration="400">
+    <div class="navbar2_container">
+      <a href="https://techto.org" class="navbar2_logo-link w-nav-brand">
+        <div class="navbar2_logo w-embed">
+          <svg fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.0504 0.779297V6.16446H11.788V24.474H6.2624V6.16446H0V0.779297H18.0504Z" fill="black"></path>
+            <path d="M37.5571 18.7298C37.5571 22.1763 39.9147 24.474 43.4511 24.474H55.6075L55.9715 24.4741C59.5079 24.4741 61.8656 22.1764 61.8656 18.7299L61.8613 12.2676H68.8604V24.474H74.3861V0.779297H68.8604V6.88248H61.8613V0.779297H56.3356V13.8019L56.3399 18.7299C56.3399 18.9453 56.1926 19.0889 55.9715 19.0889L43.4511 19.0888C43.2301 19.0888 43.0827 18.9452 43.0827 18.7298V6.52347C43.0827 6.30806 43.2301 6.16446 43.4511 6.16446H49.7135C49.9345 6.16446 50.0819 6.30806 50.0819 6.52347V12.2676H55.6075V6.52347C55.6075 3.07697 53.2499 0.779297 49.7135 0.779297H43.4511C39.9147 0.779297 37.5571 3.07697 37.5571 6.52347V18.7298Z" fill="black"></path>
+            <path d="M18.3549 24.474C14.8185 24.474 12.4609 22.1763 12.4609 18.7298C12.4609 15.2833 14.8185 12.9857 18.3549 12.9857H30.9258C31.1469 12.9857 31.2942 12.878 31.2942 12.6267C31.2942 12.4471 31.1469 12.2676 30.9258 12.2676H24.6634C21.127 12.2676 18.7694 9.96998 18.7694 6.52347C18.7694 3.07697 21.127 0.779297 24.6634 0.779297H36.8199V6.16446H24.6634C24.4424 6.16446 24.2951 6.30806 24.2951 6.52347C24.2951 6.73888 24.4424 6.88248 24.6634 6.88248H30.9258C34.4622 6.88248 36.8199 9.18015 36.8199 12.6267C36.8199 16.0732 34.4622 18.3708 30.9258 18.3708H18.3549C18.1339 18.3708 17.9865 18.5144 17.9865 18.7298C17.9865 18.9452 18.1339 19.0888 18.3549 19.0888H36.8199V24.474H18.3549Z" fill="black"></path>
+            <path d="M81.3612 18.7299C81.3612 22.1764 83.7188 24.4741 87.2553 24.4741L93.1493 24.474V19.0888L87.2553 19.0889C87.0342 19.0889 86.8869 18.9453 86.8869 18.7299L86.8869 6.16446H93.1493V0.779297H75.0988V6.16446H81.3612V18.7299Z" fill="black"></path>
+            <path d="M99.717 24.4753C96.1806 24.4753 93.823 22.1776 93.823 18.7311V6.52475C93.823 3.07825 96.1806 0.780576 99.717 0.780576H110.106C113.642 0.780576 116 3.07825 116 6.52475V18.7311C116 22.1776 113.642 24.4753 110.106 24.4753H99.717ZM99.3487 18.7311C99.3487 18.9465 99.496 19.0901 99.717 19.0901H110.106C110.327 19.0901 110.474 18.9465 110.474 18.7311V6.52475C110.474 6.30934 110.327 6.16575 110.106 6.16575H99.717C99.496 6.16575 99.3487 6.30934 99.3487 6.52475V18.7311Z" fill="black"></path>
+          </svg>
+        </div>
+      </a>
+      <nav role="navigation" class="navbar2_menu is-page-height-tablet w-nav-menu">
+        <div class="div-block-11">
+          <a href="https://techto.org/events" class="navbar2_link current w-nav-link">Events</a>
+          <a href="https://www.peerscale.com/" target="_blank" class="navbar2_link current w-nav-link">Peerscale</a>
+          <a href="https://techto.org/community" class="navbar2_link current w-nav-link">Community</a>
+          <a href="https://techto.org/directory" class="navbar2_link current w-nav-link">Directory</a>
+        </div>
+        <a href="https://techto.org/memberships" class="button w-button">Become a Member</a>
+      </nav>
+      <div class="navbar2_button-wrapper">
+        <div class="navbar2_menu-button w-nav-button">
+          <div class="menu-icon2">
+            <div class="w-embed">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16.5954 8.35546L14.8845 6.64452L9.68997 11.8391V0.23999H7.26997V11.8391L2.07544 6.64452L0.364502 8.35546L8.47997 16.4709L16.5954 8.35546Z" fill="CurrentColor"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-box-shadow"></div>
+    </div>
+  </div>
+
+  <!-- Hero gradient layer (sits behind nav, fades yellow → white) -->
+  <div class="hero-gradient"></div>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ─── Math Engine ─────────────────────────────────────────────────────────────
+
+    function calcGrowth({ revenue, expenses, growth, cash }) {
+      const g = growth / 100;
+
+      let profitMonth = null;
+      if (g > 0 && revenue > 0 && revenue < expenses) {
+        profitMonth = Math.log(expenses / revenue) / Math.log(1 + g);
+      } else if (revenue >= expenses) {
+        profitMonth = 0;
+      }
+
+      const totalMonths = profitMonth !== null
+        ? Math.max(Math.ceil(profitMonth) + 6, 24)
+        : 36;
+
+      const months = [];
+      let cumBurn = 0;
+      for (let n = 0; n <= totalMonths; n++) {
+        const rev = revenue * Math.pow(1 + g, n);
+        const burn = Math.max(0, expenses - rev);
+        cumBurn += burn;
+        months.push({
+          month: n,
+          revenue: rev,
+          expenses: expenses,
+          capitalNeeded: cumBurn,
+          burn,
+        });
+      }
+
+      const capitalNeeded = profitMonth !== null && profitMonth > 0
+        ? months[Math.ceil(profitMonth)]?.capitalNeeded ?? cumBurn
+        : profitMonth === 0 ? 0 : cumBurn;
+
+      // Runway: how many months until cash runs out
+      let runwayMonths = null;
+      if (expenses > 0) {
+        let balance = cash;
+        for (let n = 0; n < 120; n++) {
+          const rev = revenue * Math.pow(1 + g, n);
+          balance -= Math.max(0, expenses - rev);
+          if (balance <= 0) { runwayMonths = n; break; }
+        }
+      }
+
+      const defaultAlive = profitMonth !== null && cash >= capitalNeeded;
+      const monthlyBurn = Math.max(0, expenses - revenue);
+
+      return { months, profitMonth, capitalNeeded, defaultAlive, runwayMonths, monthlyBurn };
+    }
+
+    // ─── URL State ────────────────────────────────────────────────────────────────
+
+    function getDefaults() {
+      const p = new URLSearchParams(window.location.search);
+      return {
+        revenue:  Number(p.get('r')) || 10000,
+        expenses: Number(p.get('e')) || 25000,
+        growth:   Number(p.get('g')) || 10,
+        cash:     Number(p.get('c')) || 100000,
+      };
+    }
+
+    function encodeState(v) {
+      const p = new URLSearchParams({ r: v.revenue, e: v.expenses, g: v.growth, c: v.cash });
+      window.history.replaceState(null, '', '?' + p.toString());
+    }
+
+    // ─── SVG Chart ───────────────────────────────────────────────────────────────
+
+    function GrowthChart({ months, profitMonth }) {
+      const svgRef = useRef(null);
+      const PAD = { top: 20, right: 24, bottom: 36, left: 64 };
+
+      if (!months.length) return null;
+
+      const maxRev = Math.max(...months.map(m => m.revenue));
+      const maxY = Math.max(maxRev, months[0].expenses) * 1.15;
+      const minY = 0;
+      const maxX = months[months.length - 1].month;
+
+      // Dimensions — use a fixed viewBox, SVG scales responsively
+      const W = 900, H = 220;
+      const chartW = W - PAD.left - PAD.right;
+      const chartH = H - PAD.top - PAD.bottom;
+
+      const xScale = m => PAD.left + (m / maxX) * chartW;
+      const yScale = v => PAD.top + chartH - ((v - minY) / (maxY - minY)) * chartH;
+
+      // Revenue path
+      const revPoints = months.map(m => `${xScale(m.month)},${yScale(m.revenue)}`).join(' ');
+      const revArea = [
+        `M ${xScale(0)},${yScale(0)}`,
+        ...months.map(m => `L ${xScale(m.month)},${yScale(m.revenue)}`),
+        `L ${xScale(maxX)},${yScale(0)}`,
+        'Z'
+      ].join(' ');
+
+      // Expense line (flat)
+      const expY = yScale(months[0].expenses);
+      const expPath = `M ${xScale(0)},${expY} L ${xScale(maxX)},${expY}`;
+
+      // Capital needed area (between expense line and revenue, where expense > revenue)
+      const capPoints = months
+        .filter(m => m.expenses > m.revenue)
+        .map(m => `${xScale(m.month)},${yScale(m.revenue)}`);
+      const capArea = capPoints.length > 1
+        ? [
+            `M ${capPoints[0]}`,
+            ...capPoints.slice(1).map(p => `L ${p}`),
+            `L ${xScale(months.filter(m => m.expenses > m.revenue).slice(-1)[0].month)},${expY}`,
+            `L ${xScale(0)},${expY}`,
+            'Z'
+          ].join(' ')
+        : null;
+
+      // Y axis ticks
+      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => ({
+        v: minY + t * (maxY - minY),
+        y: yScale(minY + t * (maxY - minY)),
+      }));
+
+      // X axis ticks
+      const tickStep = maxX <= 12 ? 2 : maxX <= 24 ? 4 : 6;
+      const xTicks = [];
+      for (let i = 0; i <= maxX; i += tickStep) xTicks.push(i);
+
+      const profitX = profitMonth !== null && profitMonth > 0
+        ? xScale(Math.min(profitMonth, maxX))
+        : null;
+
+      // Tooltip state
+      const [tooltip, setTooltip] = useState(null);
+
+      function handleMouseMove(e) {
+        const rect = svgRef.current.getBoundingClientRect();
+        const svgX = (e.clientX - rect.left) / rect.width * W;
+        const monthRaw = (svgX - PAD.left) / chartW * maxX;
+        const monthIdx = Math.round(Math.max(0, Math.min(monthRaw, maxX)));
+        const d = months[monthIdx];
+        if (d) {
+          setTooltip({
+            x: xScale(d.month) / W * 100,
+            y: Math.min(yScale(d.revenue), yScale(d.expenses)) / H * 100,
+            data: d,
+          });
+        }
+      }
+
+      return (
+        <div className="relative w-full" onMouseLeave={() => setTooltip(null)}>
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${W} ${H}`}
+            className="w-full h-auto"
+            onMouseMove={handleMouseMove}
+            style={{ cursor: 'crosshair' }}
+          >
+            {/* Grid lines */}
+            {yTicks.map(({ y, v }, i) => (
+              <line key={i} x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+                stroke="#e5e7eb" strokeWidth="1" />
+            ))}
+
+            {/* Capital needed area */}
+            {capArea && (
+              <path d={capArea} fill="#d2f5ff" fillOpacity="0.7" />
+            )}
+
+            {/* Revenue area (subtle fill) */}
+            <path d={revArea} fill="#22c55e" fillOpacity="0.08" />
+
+            {/* Revenue curve */}
+            <polyline
+              points={revPoints}
+              fill="none"
+              stroke="#22c55e"
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+            />
+
+            {/* Expense line */}
+            <path d={expPath} stroke="#ef4444" strokeWidth="2" strokeDasharray="8 4" fill="none" />
+
+            {/* Profitability marker */}
+            {profitX && (
+              <g>
+                <line
+                  x1={profitX} y1={PAD.top}
+                  x2={profitX} y2={H - PAD.bottom}
+                  stroke="#000" strokeWidth="1.5" strokeDasharray="4 3"
+                />
+                <rect x={profitX - 52} y={PAD.top} width={104} height={20} rx="3"
+                  fill="#ebff52" />
+                <text
+                  x={profitX} y={PAD.top + 14}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontFamily="Artex, system-ui"
+                  fill="#000"
+                  fontWeight="600"
+                >
+                  PROFITABLE ✓
+                </text>
+              </g>
+            )}
+
+            {/* Y axis labels */}
+            {yTicks.map(({ y, v }, i) => (
+              <text key={i} x={PAD.left - 8} y={y + 4}
+                textAnchor="end" fontSize="11"
+                fontFamily="Artex, system-ui" fill="#9ca3af">
+                {v >= 1000000
+                  ? `$${(v / 1000000).toFixed(1)}M`
+                  : v >= 1000
+                  ? `$${(v / 1000).toFixed(0)}k`
+                  : `$${v.toFixed(0)}`}
+              </text>
+            ))}
+
+            {/* X axis labels */}
+            {xTicks.map(t => (
+              <text key={t}
+                x={xScale(t)} y={H - PAD.bottom + 18}
+                textAnchor="middle" fontSize="11"
+                fontFamily="Artex, system-ui" fill="#9ca3af">
+                Mo {t}
+              </text>
+            ))}
+
+            {/* Axes */}
+            <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={H - PAD.bottom}
+              stroke="#d1d5db" strokeWidth="1" />
+            <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom}
+              stroke="#d1d5db" strokeWidth="1" />
+
+            {/* Legend */}
+            <g transform={`translate(${PAD.left + 8}, ${PAD.top + 4})`}>
+              <line x1="0" y1="7" x2="16" y2="7" stroke="#22c55e" strokeWidth="2.5" />
+              <text x="20" y="11" fontSize="11" fontFamily="Artex, system-ui" fill="#4b5563">Revenue</text>
+              <line x1="70" y1="7" x2="86" y2="7" stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" />
+              <text x="90" y="11" fontSize="11" fontFamily="Artex, system-ui" fill="#4b5563">Expenses</text>
+              <rect x="160" y="1" width="14" height="12" fill="#d2f5ff" stroke="#93c5fd" strokeWidth="1" rx="2" />
+              <text x="178" y="11" fontSize="11" fontFamily="Artex, system-ui" fill="#4b5563">Capital needed</text>
+            </g>
+          </svg>
+
+          {/* Tooltip */}
+          {tooltip && (
+            <div
+              className="absolute pointer-events-none bg-white border border-black rounded-lg p-3 text-sm font-ui shadow-lg z-10"
+              style={{
+                left: `${Math.min(tooltip.x, 75)}%`,
+                top: `${Math.max(tooltip.y - 10, 5)}%`,
+                transform: 'translateY(-100%)',
+              }}
+            >
+              <div className="font-bold mb-1 text-black">Month {tooltip.data.month}</div>
+              <div className="text-green-600">Revenue: ${Math.round(tooltip.data.revenue).toLocaleString()}</div>
+              <div className="text-red-500">Expenses: ${Math.round(tooltip.data.expenses).toLocaleString()}</div>
+              {tooltip.data.burn > 0 && (
+                <div className="text-blue-600">Burn: ${Math.round(tooltip.data.burn).toLocaleString()}/mo</div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── Input Field ─────────────────────────────────────────────────────────────
+
+    function InputField({ label, value, onChange, prefix, suffix, step = 1, min = 0 }) {
+      const [raw, setRaw] = useState(String(value));
+      const [focused, setFocused] = useState(false);
+
+      useEffect(() => {
+        if (!focused) setRaw(String(value));
+      }, [value, focused]);
+
+      return (
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-ui text-gray-500 uppercase tracking-wider">{label}</label>
+          <div className="flex items-center border border-black rounded-lg px-3 py-2 gap-1 bg-white focus-within:ring-2 focus-within:ring-[#ebff52]">
+            {prefix && <span className="text-gray-400 font-ui text-sm">{prefix}</span>}
+            <input
+              type="number"
+              step={step}
+              min={min}
+              className="w-full outline-none font-ui text-black bg-transparent text-sm"
+              value={raw}
+              onFocus={e => { setFocused(true); e.target.select(); }}
+              onChange={e => setRaw(e.target.value)}
+              onBlur={() => {
+                setFocused(false);
+                const num = parseFloat(raw);
+                if (!isNaN(num) && num >= 0) onChange(num);
+                else setRaw(String(value));
+              }}
+              onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+            />
+            {suffix && <span className="text-gray-400 font-ui text-sm">{suffix}</span>}
+          </div>
+        </div>
+      );
+    }
+
+    // ─── App ──────────────────────────────────────────────────────────────────────
+
+    function App() {
+      const defaults = useMemo(getDefaults, []);
+      const [revenue,  setRevenue]  = useState(defaults.revenue);
+      const [expenses, setExpenses] = useState(defaults.expenses);
+      const [growth,   setGrowth]   = useState(defaults.growth);
+      const [cash,     setCash]     = useState(defaults.cash);
+      const [copied,   setCopied]   = useState(false);
+
+      const result = useMemo(
+        () => calcGrowth({ revenue, expenses, growth, cash }),
+        [revenue, expenses, growth, cash]
+      );
+
+      useEffect(() => encodeState({ revenue, expenses, growth, cash }), [revenue, expenses, growth, cash]);
+
+      function copyLink() {
+        navigator.clipboard.writeText(window.location.href);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+
+      const { months, profitMonth, capitalNeeded, defaultAlive, runwayMonths, monthlyBurn } = result;
+
+      const fmt = n =>
+        n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M`
+        : n >= 1000    ? `$${(n / 1000).toFixed(0)}k`
+        :                `$${Math.round(n).toLocaleString()}`;
+
+      return (
+        <div className="font-ui" style={{ backgroundColor: '#fff' }}>
+
+          <main className="max-w-5xl mx-auto px-4 py-3">
+
+            {/* Chart */}
+            <div className="fadein-1">
+              <GrowthChart months={months} profitMonth={profitMonth} />
+            </div>
+
+            {/* Status Pill + inline description */}
+            <div className="fadein-2 flex items-center gap-3 mt-2 mb-3">
+              <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border-2 font-ui font-bold text-sm flex-shrink-0 ${
+                defaultAlive
+                  ? 'bg-green-50 border-green-500 text-green-700'
+                  : 'bg-red-50 border-red-500 text-red-700'
+              }`}>
+                {defaultAlive ? '✓ Default Alive' : '✗ Default Dead'}
+              </span>
+              <span className="text-gray-500 font-ui text-xs">
+                {defaultAlive
+                  ? `Profitability in ${Math.ceil(profitMonth)} months — without raising another dollar.`
+                  : profitMonth !== null
+                    ? `Needs ${fmt(capitalNeeded)} to reach profitability in ${Math.ceil(profitMonth)} months. ${runwayMonths != null ? `${runwayMonths} months runway.` : ''}`
+                    : `Will never reach profitability at current growth rate. Grow faster or cut expenses.`
+                }
+              </span>
+            </div>
+
+            {/* Metric Cards */}
+            <div className="fadein-3 grid grid-cols-3 gap-3 mb-3">
+              {[
+                { label: 'Months to Profit', value: profitMonth !== null ? Math.ceil(profitMonth) : '∞' },
+                { label: 'Capital Needed',   value: fmt(capitalNeeded) },
+                { label: 'Monthly Burn',     value: fmt(monthlyBurn) },
+              ].map(({ label, value }) => (
+                <div key={label} className="border border-black rounded-xl p-3">
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5 font-ui">{label}</div>
+                  <div className="font-display text-2xl text-black">{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Inputs */}
+            <div className="fadein-4 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border border-black rounded-xl bg-gray-50 mb-3">
+              <InputField label="Monthly Revenue"  value={revenue}  onChange={setRevenue}  prefix="$" />
+              <InputField label="Monthly Expenses" value={expenses} onChange={setExpenses} prefix="$" />
+              <InputField label="Monthly Growth"   value={growth}   onChange={setGrowth}   suffix="%" step={0.1} />
+              <InputField label="Cash on Hand"     value={cash}     onChange={setCash}     prefix="$" />
+            </div>
+
+            {/* Actions */}
+            <div className="fadein-5">
+              <button
+                onClick={copyLink}
+                className="button w-button"
+              >
+                {copied ? '✓ Copied!' : 'Copy Shareable Link'}
+              </button>
+            </div>
+
+          </main>
+
+          {/* Fixed bottom dock — CTA + lattice peek, exactly like TechTO homepage */}
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10, background: '#fff' }}>
+
+            {/* CTA row */}
+            <div className="fadein-6 padding-global">
+              <div className="container-large">
+                <div className="padding-bottom padding-medium">
+                  <div className="cta8_component">
+                    <div className="cta8_content">
+                      <div className="text-size-large">Meet leaders, share ideas, and connect with people who can open new doors.</div>
+                    </div>
+                    <a href="https://techto.org/events" className="button is-secondary w-button">See Upcoming Events</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Lattice peek — exact TechTO Grid.svg via CDN, same as .bg-grid class */}
+            <div style={{
+              height: '60px',
+              backgroundImage: "url('https://cdn.prod.website-files.com/66f1864b4a6f3045a6a2ca3e/66f4193346a254b2220786a2_Grid.svg')",
+              backgroundPosition: '50% 0',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: 'cover',
+            }} />
+
+          </div>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+  <script src="webflow-export/js/webflow.js"></script>
+  <script>
+    // Button text scramble — matches TechTO's GSAP ScrambleTextPlugin effect
+    (function () {
+      const chars = 'abcdefghijklmnopqrstuvwxyz';
+      const initialized = new WeakSet();
+
+      function addScramble(btn) {
+        if (initialized.has(btn)) return;
+        initialized.add(btn);
+
+        let frame, running = false, original = '';
+
+        btn.addEventListener('mouseenter', () => {
+          original = btn.textContent.trim();
+          if (running) cancelAnimationFrame(frame);
+          running = true;
+          const start = performance.now();
+          const duration = 300;
+
+          (function tick(now) {
+            const t = Math.min((now - start) / duration, 1);
+            const resolved = Math.floor(t * original.length);
+            btn.textContent = original.split('').map((c, i) =>
+              c === ' ' ? ' ' : i < resolved ? c : chars[Math.floor(Math.random() * chars.length)]
+            ).join('');
+            if (t < 1) {
+              frame = requestAnimationFrame(tick);
+            } else {
+              btn.textContent = original;
+              running = false;
+            }
+          })(performance.now());
+        });
+
+        btn.addEventListener('mouseleave', () => {
+          if (running) {
+            cancelAnimationFrame(frame);
+            btn.textContent = original;
+            running = false;
+          }
+        });
+      }
+
+      function init() {
+        document.querySelectorAll('.button').forEach(addScramble);
+      }
+
+      // Init on load, then watch for React-rendered buttons
+      init();
+      const observer = new MutationObserver(init);
+      observer.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
+</body>
+</html>
