@@ -341,10 +341,10 @@
         <div>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ touchAction: 'none' }}>
           <defs>
-            {/* Capital fill gradient — Trevor: rgba(200,200,255,0.3) → rgba(200,200,255,0.9) bottom→top */}
+            {/* Capital fill gradient */}
             <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(200,200,255,0.9)" />
-              <stop offset="100%" stopColor="rgba(200,200,255,0.3)" />
+              <stop offset="0%" stopColor="rgba(210,245,255,0.9)" />
+              <stop offset="100%" stopColor="rgba(210,245,255,0.3)" />
             </linearGradient>
             <clipPath id="chartClip">
               <rect x={plotL} y={plotT} width={plotR - plotL} height={plotB - plotT} />
@@ -377,8 +377,54 @@
             </text>
           )}
 
+          {/* ── Costs-exceed-revenue zone: profitable now but expenses growing faster ── */}
+          {rev0 > exp0 && expGrowth > g && (() => {
+            const cMonth = Math.log(rev0 / exp0) / Math.log((1 + expGrowth) / (1 + g));
+            if (cMonth <= 0 || cMonth > nMonths) return null;
+            const cX = convMonthToX(cMonth);
+            const cY = convFlowToY(expAtMonth(cMonth));
+            const steps = 60;
+
+            // Fill between expense (above) and revenue (below) from crossing to end of chart
+            let d = `M ${cX.toFixed(1)} ${cY.toFixed(1)}`;
+            for (let i = 1; i <= steps; i++) {
+              const m = cMonth + (nMonths - cMonth) * i / steps;
+              d += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(expAtMonth(m)).toFixed(1)}`;
+            }
+            for (let i = steps; i >= 0; i--) {
+              const m = cMonth + (nMonths - cMonth) * i / steps;
+              d += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(revAtMonth(m)).toFixed(1)}`;
+            }
+            d += ' Z';
+
+            // Crossing annotation — mirrors breakeven annotation style
+            const crossLabel = `Costs exceed revenue at ${fmtTime(cMonth)}`;
+            const flipLeft = cX + crossLabel.length * 7 > plotR;
+            const lineEndY = Math.min(cY + 20, plotB - 4);
+
+            // Philosophical label centred in the blue zone
+            const midMonth = cMonth + (nMonths - cMonth) * 0.4;
+            const midX = convMonthToX(midMonth);
+            const midY = (convFlowToY(revAtMonth(midMonth)) + convFlowToY(expAtMonth(midMonth))) / 2;
+
+            return (
+              <g>
+                <path clipPath="url(#chartClip)" d={d} fill="url(#capGrad)" />
+                <line x1={cX} y1={cY} x2={cX} y2={lineEndY} stroke="#888" strokeWidth="1" />
+                <text x={flipLeft ? cX - 3 : cX + 3} y={lineEndY + 2}
+                  textAnchor={flipLeft ? 'end' : 'start'} fontSize="13" fontFamily={font} fill="#000" dominantBaseline="top">
+                  {crossLabel}
+                </text>
+                <text x={midX} y={midY}
+                  textAnchor="middle" fontSize="14" fontFamily={font} fontWeight="bold" fill="#000" dominantBaseline="middle">
+                  costs outrun growth
+                </text>
+              </g>
+            );
+          })()}
+
           {/* ── Revenue line ── clipped so it doesn't extend above chart top */}
-          <path d={`M ${p0X} ${p0Y} L ${p1X} ${p1Y}`} stroke="#aaf5aa" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />
+          <path d={`M ${p0X} ${p0Y} L ${p1X} ${p1Y}`} stroke="#ebff52" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />
 
           {/* ── Expense line ── curved if expGrowth > 0 */}
           {(() => {
@@ -391,7 +437,7 @@
             } else {
               d += ` L ${plotR} ${expY}`;
             }
-            return <path d={d} stroke="#f5bbbb" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />;
+            return <path d={d} stroke="#ff5252" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />;
           })()}
 
           {/* ── Revenue start label — Trevor: textAlign left, at +15 from p0 along line */}
@@ -509,6 +555,13 @@
           <line x1={plotL} y1={plotB} x2={plotR} y2={plotB} stroke="#ccc" strokeWidth="1" />
           <line x1={plotL} y1={plotT} x2={plotL} y2={plotB} stroke="#ccc" strokeWidth="1" />
 
+          {/* ── Y-axis auto-scale hint — double arrow at axis top ── */}
+          <g stroke="#ccc" strokeWidth="1.2" fill="none">
+            <line x1={plotL} y1={plotT} x2={plotL} y2={plotT - 12} />
+            <path d={`M ${plotL - 3.5} ${plotT - 8} L ${plotL} ${plotT - 13} L ${plotL + 3.5} ${plotT - 8}`} />
+            <path d={`M ${plotL - 3.5} ${plotT + 5} L ${plotL} ${plotT + 10} L ${plotL + 3.5} ${plotT + 5}`} />
+          </g>
+
           {/* ── X labels ── Trevor: drawXLabels() — "year 0", "year 1", ... */}
           {[0,1,2,3].map(yr => {
             const x = convMonthToX(yr * 12);
@@ -537,21 +590,21 @@
 
           {/* ── Drag handles ── Trevor: drawDragHandle() red=exp, green=rev */}
           {/* Revenue handle at p0 */}
-          <circle cx={p0X} cy={p0Y} r={dragRad} fill="#00cc00" stroke="#007a00" strokeWidth={dragRad/4}
+          <circle cx={p0X} cy={p0Y} r={dragRad} fill="#ebff52" stroke="#b8cc1a" strokeWidth={dragRad/4}
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('rev')} onTouchStart={startDrag('rev')} />
-          <circle cx={p0X} cy={p0Y} r={dragRad * 0.25} fill="#00ff00" style={{ pointerEvents: 'none' }} />
+          <circle cx={p0X} cy={p0Y} r={dragRad * 0.25} fill="#f5ffaa" style={{ pointerEvents: 'none' }} />
 
-          {/* Growth handle at pm (on revenue line at protRad) — orange to distinguish from rev handle */}
-          <circle cx={pmX} cy={pmY} r={dragRad + 2} fill="#ff8800" stroke="#cc5500" strokeWidth={2}
+          {/* Growth handle at pm (on revenue line at protRad) */}
+          <circle cx={pmX} cy={pmY} r={dragRad + 2} fill="#ebff52" stroke="#b8cc1a" strokeWidth={2}
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('growth')} onTouchStart={startDrag('growth')} />
 
           {/* Expense handle at (p0X, expY) */}
-          <circle cx={p0X} cy={expY} r={dragRad} fill="#ff0000" stroke="#b20000" strokeWidth={dragRad/4}
+          <circle cx={p0X} cy={expY} r={dragRad} fill="#ff5252" stroke="#cc1a1a" strokeWidth={dragRad/4}
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('exp')} onTouchStart={startDrag('exp')} />
-          <circle cx={p0X} cy={expY} r={dragRad * 0.25} fill="#ff5555" style={{ pointerEvents: 'none' }} />
+          <circle cx={p0X} cy={expY} r={dragRad * 0.25} fill="#ff9090" style={{ pointerEvents: 'none' }} />
         </svg>
           {/* Mobile callout */}
           <div className="md:hidden" style={{ marginTop: '6px', fontSize: '13px', color: '#6b7280', textAlign: 'center', fontFamily: 'Artex, sans-serif' }}>
@@ -616,7 +669,7 @@
 
       // Milestones data
       const MILESTONES = [
-        { name: 'Wealthsimple', arr: 265_000_000, logo: 'https://cdn.simpleicons.org/wealthsimple' },
+        { name: 'Wealthsimple', arr: 265_000_000, logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcDAp_72xcznmkFbk2lOe3KIvPlnRD_1SdiA&s' },
         { name: 'Shopify', arr: 8_900_000_000, logo: 'https://cdn.simpleicons.org/shopify' },
         { name: 'Stripe', arr: 15_000_000_000, logo: 'https://cdn.simpleicons.org/stripe' },
         { name: 'Apple', arr: 391_000_000_000, logo: 'https://cdn.simpleicons.org/apple' },
@@ -733,10 +786,10 @@
               {/* Generic milestones row */}
               {(() => {
                 const genericMilestones = [
-                  { label: 'Default Alive', arr: null },
-                  { label: '$1M / year', arr: 1_000_000 },
-                  { label: '$10M / year', arr: 10_000_000 },
-                  { label: '$100M / year', arr: 100_000_000 },
+                  { label: 'Default Alive', desc: 'reach profitability', arr: null },
+                  { label: '$1M / year', desc: 'first million', arr: 1_000_000 },
+                  { label: '$10M / year', desc: 'real traction', arr: 10_000_000 },
+                  { label: '$100M / year', desc: 'category leader', arr: 100_000_000 },
                 ];
                 const moForGeneric = genericMilestones.map(m => {
                   if (m.arr === null) return breakevenMonth;
@@ -760,10 +813,13 @@
                           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                           minHeight: '130px',
                         }}>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'Feature Display, serif', color: passed ? '#16a34a' : never ? '#9ca3af' : '#111', lineHeight: 1.2 }}>
-                            {m.label}
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', lineHeight: 1.2 }}>
+                              {m.label}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{m.desc}</div>
                           </div>
-                          <div style={{ fontSize: '12px', color: passed ? '#16a34a' : never ? '#9ca3af' : '#6b7280', marginTop: '8px' }}>
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'Feature Display, serif', color: passed ? '#16a34a' : never ? '#9ca3af' : '#111', marginTop: '10px' }}>
                             {passed ? 'Already here' : never ? 'Never' : fmtTimeLong(mo)}
                           </div>
                         </div>
