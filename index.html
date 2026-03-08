@@ -583,12 +583,20 @@
           <line x1={plotL} y1={plotB} x2={plotR} y2={plotB} stroke="#ccc" strokeWidth="1" />
           <line x1={plotL} y1={plotT} x2={plotL} y2={plotB} stroke="#ccc" strokeWidth="1" />
 
-          {/* ── Y-axis auto-scale hint — double arrow at axis top ── */}
+          {/* ── Y-axis auto-scale hint — arrow at axis top ── */}
           <g stroke="#ccc" strokeWidth="1.2" fill="none">
             <line x1={plotL} y1={plotT} x2={plotL} y2={plotT - 12} />
             <path d={`M ${plotL - 3.5} ${plotT - 8} L ${plotL} ${plotT - 13} L ${plotL + 3.5} ${plotT - 8}`} />
             <path d={`M ${plotL - 3.5} ${plotT + 5} L ${plotL} ${plotT + 10} L ${plotL + 3.5} ${plotT + 5}`} />
           </g>
+
+          {/* ── Y-axis auto-scale hint — arrow at axis bottom (shown until at min) ── */}
+          {dynMinFlow > 200 && (
+            <g stroke="#ccc" strokeWidth="1.2" fill="none">
+              <line x1={plotL} y1={plotB} x2={plotL} y2={plotB + 12} />
+              <path d={`M ${plotL - 3.5} ${plotB + 8} L ${plotL} ${plotB + 13} L ${plotL + 3.5} ${plotB + 8}`} />
+            </g>
+          )}
 
           {/* ── X labels ── Trevor: drawXLabels() — "year 0", "year 1", ... */}
           {[0,1,2,3].map(yr => {
