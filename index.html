@@ -351,7 +351,6 @@
       }
 
       const font = 'Artex, Arial, sans-serif';
-      const fontDisplay = 'Feature Display, Georgia, serif';
 
       // Breakeven geometry
       const bxWithin = breakevenMonth !== null && breakevenMonth > 0 && breakevenMonth <= nMonths;
@@ -401,7 +400,7 @@
 
           {/* ── Capital needed label ── Trevor's exact position formula */}
           {rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (
-            <text x={lbX} y={lbY} fontSize={fsCapLabel} fontFamily={fontDisplay} fontWeight="bold" fill="#000" dominantBaseline="middle">
+            <text x={lbX} y={lbY} fontSize={fsCapLabel} fontFamily={font} fontWeight="bold" fill="#000" dominantBaseline="middle">
               {fmtMoney(capitalNeeded)} capital needed
             </text>
           )}
@@ -445,7 +444,7 @@
                   {crossLabel}
                 </text>
                 <text x={midX} y={midY}
-                  textAnchor="middle" fontSize={fsCapLabel} fontFamily={fontDisplay} fontWeight="bold" fill="#000" dominantBaseline="middle">
+                  textAnchor="middle" fontSize={fsCapLabel} fontFamily={font} fontWeight="bold" fill="#000" dominantBaseline="middle">
                   costs outrun growth
                 </text>
               </g>
@@ -475,7 +474,7 @@
             return (
               <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
                 x={p0X + 15} y={p0Y - 7}
-                textAnchor="start" fontSize={fsAnnot} fontFamily={fontDisplay} fontWeight="bold" fill="#000">
+                textAnchor="start" fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
                 {fmtMoney(rev0)} revenue per month
               </text>
             );
@@ -488,7 +487,7 @@
             return (
               <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
                 x={p0X + protRad - 12} y={p0Y - 7}
-                textAnchor="end" fontSize={fsAnnot} fontFamily={fontDisplay} fontWeight="bold" fill="#000">
+                textAnchor="end" fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
                 {`growing ${pct}% monthly`}
               </text>
             );
@@ -496,7 +495,7 @@
 
           {/* ── Expense label — Trevor: textAlign left, at +15 from p0 along expense line */}
           <text x={p0X + 15} y={expY - 7}
-            fontSize={fsAnnot} fontFamily={fontDisplay} fontWeight="bold" fill="#000">
+            fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
             {fmtMoney(exp0)} expenses per month{expGrowth > 0 ? ` +${Math.round(expGrowth * 100)}%/mo` : ''}
           </text>
 
