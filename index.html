@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Default Alive? — TechTO</title>
+  <link href="favicon.png" rel="shortcut icon" type="image/x-icon">
+  <link href="webclip.png" rel="apple-touch-icon">
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -661,39 +663,38 @@
                   if (s.endsWith('m')) return parseFloat(s) * 1000000;
                   return parseFloat(s);
                 };
-                const fieldStyle = { width: '90px', fontSize: '12px', padding: '3px 6px', border: '1px solid #e5e7eb', borderRadius: '5px', textAlign: 'right', fontFamily: 'Artex, sans-serif', outline: 'none' };
+                const fieldStyle = { width: '120px', fontSize: '12px', padding: '3px 6px', border: '1px solid #e5e7eb', borderRadius: '5px', textAlign: 'right', fontFamily: 'Artex, sans-serif', outline: 'none' };
                 const labelStyle = { fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '2px' };
-                const fmtVal = v => v >= 1e6 ? `$${Math.round(v/1e6)}M` : v >= 1e3 ? `$${Math.round(v/1e3)}k` : `$${Math.round(v)}`;
                 return (
                   <div style={{ display: 'flex', gap: '16px', marginTop: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div>
-                      <span style={labelStyle}>Revenue /mo</span>
-                      <input key={'r'+rev0} type="text" defaultValue={fmtVal(rev0)}
-                        onFocus={e => { e.target.value = Math.round(rev0); e.target.select(); }}
-                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setRev0(v); else e.target.value = fmtVal(rev0); }}
+                      <span style={labelStyle}>Revenue per month</span>
+                      <input key={'r'+rev0} type="text" defaultValue={Math.round(rev0)}
+                        onFocus={e => { e.target.select(); }}
+                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setRev0(v); else e.target.value = Math.round(rev0); }}
                         onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                         style={fieldStyle} />
                     </div>
                     <div>
-                      <span style={labelStyle}>Expenses /mo</span>
-                      <input key={'e'+exp0} type="text" defaultValue={fmtVal(exp0)}
-                        onFocus={e => { e.target.value = Math.round(exp0); e.target.select(); }}
-                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setExp0(v); else e.target.value = fmtVal(exp0); }}
+                      <span style={labelStyle}>Expenses per month</span>
+                      <input key={'e'+exp0} type="text" defaultValue={Math.round(exp0)}
+                        onFocus={e => { e.target.select(); }}
+                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setExp0(v); else e.target.value = Math.round(exp0); }}
                         onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                         style={fieldStyle} />
                     </div>
                     <div>
-                      <span style={labelStyle}>Expense growth /mo</span>
+                      <span style={labelStyle}>Expense growth per month</span>
                       <input key={'eg'+expGrowth} type="text" defaultValue={Math.round(expGrowth * 100) + '%'}
-                        onFocus={e => { e.target.value = Math.round(expGrowth * 100); e.target.select(); }}
+                        onFocus={e => { e.target.select(); }}
                         onBlur={e => { const v = parseFloat(e.target.value.replace(/%/g, '')); if (!isNaN(v) && v >= 0) setExpGrowth(Math.min(v / 100, 0.50)); else e.target.value = Math.round(expGrowth * 100) + '%'; }}
                         onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                         style={fieldStyle} />
                     </div>
                     <div>
-                      <span style={labelStyle}>Revenue growth /mo</span>
+                      <span style={labelStyle}>Revenue growth per month</span>
                       <input key={'g'+growth} type="text" defaultValue={Math.round(growth * 100) + '%'}
-                        onFocus={e => { e.target.value = Math.round(growth * 100); e.target.select(); }}
+                        onFocus={e => { e.target.select(); }}
                         onBlur={e => { const v = parseFloat(e.target.value.replace(/%/g, '')); if (!isNaN(v) && v >= 0) setGrowth(Math.min(v / 100, 0.70)); else e.target.value = Math.round(growth * 100) + '%'; }}
                         onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                         style={fieldStyle} />
