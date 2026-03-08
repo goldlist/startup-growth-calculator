@@ -351,7 +351,8 @@
 
       // Tight-lines detection — when rev and exp handles are too close to label inline
       const expY0 = convFlowToY(exp0);
-      const tightLines = Math.abs(p0Y - expY0) < fsAnnot * 3.5;
+      // Only trigger legend when lines are truly within one label-height of each other
+      const tightLines = Math.abs(p0Y - expY0) < fsAnnot * 1.8;
 
       // $100M milestone geometry
       const ipoWithin = ipoMonth !== null && ipoMonth > 0 && ipoMonth <= nMonths;
@@ -361,6 +362,9 @@
         <div ref={containerRef}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ touchAction: 'none' }}>
           <defs>
+            <filter id="legendShadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#00000018" />
+            </filter>
             {/* Capital fill gradient */}
             <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(210,245,255,0.9)" />
@@ -525,7 +529,8 @@
             return (
               <g style={{ pointerEvents: 'none' }}>
                 <rect x={bx} y={by} width={maxW} height={boxH}
-                  fill="white" fillOpacity="0.93" rx="5" stroke="#e5e7eb" strokeWidth="1" />
+                  fill="white" rx="5" stroke="#e5e7eb" strokeWidth="1"
+                  filter="url(#legendShadow)" />
                 {lines.map((line, i) => (
                   <g key={i}>
                     <circle cx={bx + pad + 4} cy={by + pad + lineH * i + lineH / 2}
