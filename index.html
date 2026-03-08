@@ -715,9 +715,9 @@
       ];
 
       const fmtRevenue = v => {
-        if (v >= 1e9) return `$${(v/1e9).toFixed(0)}B revenue`;
-        if (v >= 1e6) return `$${(v/1e6).toFixed(0)}M revenue`;
-        return `$${(v/1e3).toFixed(0)}k revenue`;
+        if (v >= 1e9) return `$${(v/1e9).toFixed(0)}B run rate`;
+        if (v >= 1e6) return `$${(v/1e6).toFixed(0)}M run rate`;
+        return `$${(v/1e3).toFixed(0)}k run rate`;
       };
 
       const fmtTimeLong = mo => {
@@ -824,9 +824,9 @@
               {(() => {
                 const genericMilestones = [
                   { label: 'Default Alive', desc: 'reach profitability', arr: null },
-                  { label: '$1M / year', desc: 'first million', arr: 1_000_000 },
-                  { label: '$10M / year', desc: 'real traction', arr: 10_000_000 },
-                  { label: '$100M / year', desc: 'category leader', arr: 100_000_000 },
+                  { label: '$1M run rate', desc: 'first million', arr: 1_000_000 },
+                  { label: '$10M run rate', desc: 'real traction', arr: 10_000_000 },
+                  { label: '$100M run rate', desc: 'category leader', arr: 100_000_000 },
                 ];
                 const moForGeneric = genericMilestones.map(m => {
                   if (m.arr === null) return breakevenMonth;
