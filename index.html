@@ -8,72 +8,42 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            display: ['Feature Display', 'Georgia', 'serif'],
-            ui: ['Artex', 'system-ui', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
   <!-- Webflow CSS -->
   <link href="webflow-export/css/normalize.css" rel="stylesheet" type="text/css">
   <link href="webflow-export/css/webflow.css" rel="stylesheet" type="text/css">
   <link href="webflow-export/css/dev-techto.webflow.css" rel="stylesheet" type="text/css">
   <style>
-    @font-face {
-      font-family: 'Feature Display';
-      src: url('./techto-brand/FeatureDisplay-Regular.otf') format('opentype');
-    }
-    @font-face {
-      font-family: 'Artex';
-      src: url('./techto-brand/Artex-Regular.ttf') format('truetype');
-    }
+    @font-face { font-family: 'Feature Display'; src: url('./techto-brand/FeatureDisplay-Regular.otf') format('opentype'); }
+    @font-face { font-family: 'Artex'; src: url('./techto-brand/Artex-Regular.ttf') format('truetype'); }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: 'Artex', system-ui, sans-serif; background: #fff; }
-
-    /* Hero gradient — exact match to Webflow .hero-gradient */
     .hero-gradient {
       z-index: 0;
       background-image: linear-gradient(180deg, #ebff52, white);
       height: 130px;
-      position: fixed;
-      top: 0; left: 0; right: 0;
+      position: fixed; top: 0; left: 0; right: 0;
       pointer-events: none;
     }
-
-    /* Space content below fixed nav, above fixed bottom dock */
-    #root { padding-top: 80px; padding-bottom: 120px; }
-
-    /* Page fade-in — mirrors Webflow IX2 on-load animation */
+    #root { padding-top: 150px; padding-bottom: 140px; }
     @keyframes techtoFadeUp {
       from { opacity: 0; transform: translate3d(0, 25%, 0); }
       to   { opacity: 1; transform: translate3d(0, 0, 0); }
     }
     .fadein-1 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.05s both; }
     .fadein-2 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.15s both; }
-    .fadein-3 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.25s both; }
-    .fadein-4 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.35s both; }
-    .fadein-5 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.45s both; }
     .fadein-6 { animation: techtoFadeUp 0.55s cubic-bezier(.25,.46,.45,.94) 0.55s both; }
   </style>
-  <!-- Webflow vh fix for mobile -->
   <script>
     let vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', vh + 'px');
     window.addEventListener('resize', () => {
-      let vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', vh + 'px');
+      document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
     });
   </script>
 </head>
 <body>
 
-  <!-- Webflow Nav — verbatim from export -->
+  <!-- Webflow Nav -->
   <div data-animation="default" class="navbar2_component w-nav" data-easing2="ease" fs-scrolldisable-element="smart-nav" data-easing="ease" data-collapse="medium" role="banner" data-duration="400">
     <div class="navbar2_container">
       <a href="https://techto.org" class="navbar2_logo-link w-nav-brand">
@@ -111,316 +81,473 @@
     </div>
   </div>
 
-  <!-- Hero gradient layer (sits behind nav, fades yellow → white) -->
   <div class="hero-gradient"></div>
-
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+    const { useState, useMemo, useRef, useEffect } = React;
 
-    // ─── Math Engine ─────────────────────────────────────────────────────────────
-
-    function calcGrowth({ revenue, expenses, growth, cash }) {
-      const g = growth / 100;
-
-      let profitMonth = null;
-      if (g > 0 && revenue > 0 && revenue < expenses) {
-        profitMonth = Math.log(expenses / revenue) / Math.log(1 + g);
-      } else if (revenue >= expenses) {
-        profitMonth = 0;
-      }
-
-      const totalMonths = profitMonth !== null
-        ? Math.max(Math.ceil(profitMonth) + 6, 24)
-        : 36;
-
-      const months = [];
-      let cumBurn = 0;
-      for (let n = 0; n <= totalMonths; n++) {
-        const rev = revenue * Math.pow(1 + g, n);
-        const burn = Math.max(0, expenses - rev);
-        cumBurn += burn;
-        months.push({
-          month: n,
-          revenue: rev,
-          expenses: expenses,
-          capitalNeeded: cumBurn,
-          burn,
-        });
-      }
-
-      const capitalNeeded = profitMonth !== null && profitMonth > 0
-        ? months[Math.ceil(profitMonth)]?.capitalNeeded ?? cumBurn
-        : profitMonth === 0 ? 0 : cumBurn;
-
-      // Runway: how many months until cash runs out
-      let runwayMonths = null;
-      if (expenses > 0) {
-        let balance = cash;
-        for (let n = 0; n < 120; n++) {
-          const rev = revenue * Math.pow(1 + g, n);
-          balance -= Math.max(0, expenses - rev);
-          if (balance <= 0) { runwayMonths = n; break; }
+    // Generate log-scale Y-axis ticks at 1× and 3× each decade
+    function genFlowTicks(minF, maxF) {
+      const ticks = [];
+      for (let exp = 1; exp <= 9; exp++) {
+        for (const base of [1, 3]) {
+          const val = base * Math.pow(10, exp);
+          if (val >= minF && val <= maxF) ticks.push(val);
         }
       }
-
-      const defaultAlive = profitMonth !== null && cash >= capitalNeeded;
-      const monthlyBurn = Math.max(0, expenses - revenue);
-
-      return { months, profitMonth, capitalNeeded, defaultAlive, runwayMonths, monthlyBurn };
+      return ticks;
     }
 
-    // ─── URL State ────────────────────────────────────────────────────────────────
-
-    function getDefaults() {
-      const p = new URLSearchParams(window.location.search);
-      return {
-        revenue:  Number(p.get('r')) || 10000,
-        expenses: Number(p.get('e')) || 25000,
-        growth:   Number(p.get('g')) || 10,
-        cash:     Number(p.get('c')) || 100000,
-      };
+    // Compute target log-scale range for auto-zoom (data occupies ~70% of chart)
+    function computeTargetLogRange(rev0, exp0, expGrowth, growth) {
+      const revEnd = rev0 * Math.pow(1 + growth, 36);
+      const expEnd = exp0 * Math.pow(1 + expGrowth, 36);
+      const rawMin = Math.min(rev0, exp0);
+      const rawMax = Math.max(revEnd, expEnd);
+      const safeMin = Math.max(rawMin, 100);
+      const safeMax = Math.max(rawMax, safeMin * 2);
+      const lMin = Math.log(safeMin);
+      const lMax = Math.log(safeMax);
+      const logRange = Math.max(lMax - lMin, 2);
+      const pad = logRange * 0.15;
+      return { lMin: lMin - pad, lMax: lMax + pad };
     }
 
-    function encodeState(v) {
-      const p = new URLSearchParams({ r: v.revenue, e: v.expenses, g: v.growth, c: v.cash });
-      window.history.replaceState(null, '', '?' + p.toString());
-    }
+    // ─── Faithful port of Trevor Blackwell's GrowthView.js ───────────────────────
+    // Source: https://gitlab.com/tlb/startuptools
+    // Trevor's chart uses HTML5 Canvas; this is an SVG port of his exact logic.
 
-    // ─── SVG Chart ───────────────────────────────────────────────────────────────
-
-    function GrowthChart({ months, profitMonth }) {
+    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth }) {
       const svgRef = useRef(null);
-      const PAD = { top: 20, right: 24, bottom: 36, left: 64 };
+      const dragging = useRef(null);
+      const [, forceRender] = useState(0);
 
-      if (!months.length) return null;
-
-      const maxRev = Math.max(...months.map(m => m.revenue));
-      const maxY = Math.max(maxRev, months[0].expenses) * 1.15;
-      const minY = 0;
-      const maxX = months[months.length - 1].month;
-
-      // Dimensions — use a fixed viewBox, SVG scales responsively
-      const W = 900, H = 220;
-      const chartW = W - PAD.left - PAD.right;
-      const chartH = H - PAD.top - PAD.bottom;
-
-      const xScale = m => PAD.left + (m / maxX) * chartW;
-      const yScale = v => PAD.top + chartH - ((v - minY) / (maxY - minY)) * chartH;
-
-      // Revenue path
-      const revPoints = months.map(m => `${xScale(m.month)},${yScale(m.revenue)}`).join(' ');
-      const revArea = [
-        `M ${xScale(0)},${yScale(0)}`,
-        ...months.map(m => `L ${xScale(m.month)},${yScale(m.revenue)}`),
-        `L ${xScale(maxX)},${yScale(0)}`,
-        'Z'
-      ].join(' ');
-
-      // Expense line (flat)
-      const expY = yScale(months[0].expenses);
-      const expPath = `M ${xScale(0)},${expY} L ${xScale(maxX)},${expY}`;
-
-      // Capital needed area (between expense line and revenue, where expense > revenue)
-      const capPoints = months
-        .filter(m => m.expenses > m.revenue)
-        .map(m => `${xScale(m.month)},${yScale(m.revenue)}`);
-      const capArea = capPoints.length > 1
-        ? [
-            `M ${capPoints[0]}`,
-            ...capPoints.slice(1).map(p => `L ${p}`),
-            `L ${xScale(months.filter(m => m.expenses > m.revenue).slice(-1)[0].month)},${expY}`,
-            `L ${xScale(0)},${expY}`,
-            'Z'
-          ].join(' ')
-        : null;
-
-      // Y axis ticks
-      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => ({
-        v: minY + t * (maxY - minY),
-        y: yScale(minY + t * (maxY - minY)),
-      }));
-
-      // X axis ticks
-      const tickStep = maxX <= 12 ? 2 : maxX <= 24 ? 4 : 6;
-      const xTicks = [];
-      for (let i = 0; i <= maxX; i += tickStep) xTicks.push(i);
-
-      const profitX = profitMonth !== null && profitMonth > 0
-        ? xScale(Math.min(profitMonth, maxX))
-        : null;
-
-      // Tooltip state
-      const [tooltip, setTooltip] = useState(null);
-
-      function handleMouseMove(e) {
-        const rect = svgRef.current.getBoundingClientRect();
-        const svgX = (e.clientX - rect.left) / rect.width * W;
-        const monthRaw = (svgX - PAD.left) / chartW * maxX;
-        const monthIdx = Math.round(Math.max(0, Math.min(monthRaw, maxX)));
-        const d = months[monthIdx];
-        if (d) {
-          setTooltip({
-            x: xScale(d.month) / W * 100,
-            y: Math.min(yScale(d.revenue), yScale(d.expenses)) / H * 100,
-            data: d,
-          });
-        }
+      // ── Dynamic Y-axis auto-zoom ──────────────────────────────────────────
+      const logMinRef = useRef(null);
+      const logMaxRef = useRef(null);
+      const rafRef = useRef(null);
+      const initialized = useRef(false);
+      if (!initialized.current) {
+        initialized.current = true;
+        const { lMin, lMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
+        logMinRef.current = lMin;
+        logMaxRef.current = lMax;
       }
-
-      return (
-        <div className="relative w-full" onMouseLeave={() => setTooltip(null)}>
-          <svg
-            ref={svgRef}
-            viewBox={`0 0 ${W} ${H}`}
-            className="w-full h-auto"
-            onMouseMove={handleMouseMove}
-            style={{ cursor: 'crosshair' }}
-          >
-            {/* Grid lines */}
-            {yTicks.map(({ y, v }, i) => (
-              <line key={i} x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
-                stroke="#e5e7eb" strokeWidth="1" />
-            ))}
-
-            {/* Capital needed area */}
-            {capArea && (
-              <path d={capArea} fill="#d2f5ff" fillOpacity="0.7" />
-            )}
-
-            {/* Revenue area (subtle fill) */}
-            <path d={revArea} fill="#22c55e" fillOpacity="0.08" />
-
-            {/* Revenue curve */}
-            <polyline
-              points={revPoints}
-              fill="none"
-              stroke="#22c55e"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-            />
-
-            {/* Expense line */}
-            <path d={expPath} stroke="#ef4444" strokeWidth="2" strokeDasharray="8 4" fill="none" />
-
-            {/* Profitability marker */}
-            {profitX && (
-              <g>
-                <line
-                  x1={profitX} y1={PAD.top}
-                  x2={profitX} y2={H - PAD.bottom}
-                  stroke="#000" strokeWidth="1.5" strokeDasharray="4 3"
-                />
-                <rect x={profitX - 52} y={PAD.top} width={104} height={20} rx="3"
-                  fill="#ebff52" />
-                <text
-                  x={profitX} y={PAD.top + 14}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fontFamily="Artex, system-ui"
-                  fill="#000"
-                  fontWeight="600"
-                >
-                  PROFITABLE ✓
-                </text>
-              </g>
-            )}
-
-            {/* Y axis labels */}
-            {yTicks.map(({ y, v }, i) => (
-              <text key={i} x={PAD.left - 8} y={y + 4}
-                textAnchor="end" fontSize="11"
-                fontFamily="Artex, system-ui" fill="#9ca3af">
-                {v >= 1000000
-                  ? `$${(v / 1000000).toFixed(1)}M`
-                  : v >= 1000
-                  ? `$${(v / 1000).toFixed(0)}k`
-                  : `$${v.toFixed(0)}`}
-              </text>
-            ))}
-
-            {/* X axis labels */}
-            {xTicks.map(t => (
-              <text key={t}
-                x={xScale(t)} y={H - PAD.bottom + 18}
-                textAnchor="middle" fontSize="11"
-                fontFamily="Artex, system-ui" fill="#9ca3af">
-                Mo {t}
-              </text>
-            ))}
-
-            {/* Axes */}
-            <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={H - PAD.bottom}
-              stroke="#d1d5db" strokeWidth="1" />
-            <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom}
-              stroke="#d1d5db" strokeWidth="1" />
-
-            {/* Legend */}
-            <g transform={`translate(${PAD.left + 8}, ${PAD.top + 4})`}>
-              <line x1="0" y1="7" x2="16" y2="7" stroke="#22c55e" strokeWidth="2.5" />
-              <text x="20" y="11" fontSize="11" fontFamily="Artex, system-ui" fill="#4b5563">Revenue</text>
-              <line x1="70" y1="7" x2="86" y2="7" stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" />
-              <text x="90" y="11" fontSize="11" fontFamily="Artex, system-ui" fill="#4b5563">Expenses</text>
-              <rect x="160" y="1" width="14" height="12" fill="#d2f5ff" stroke="#93c5fd" strokeWidth="1" rx="2" />
-              <text x="178" y="11" fontSize="11" fontFamily="Artex, system-ui" fill="#4b5563">Capital needed</text>
-            </g>
-          </svg>
-
-          {/* Tooltip */}
-          {tooltip && (
-            <div
-              className="absolute pointer-events-none bg-white border border-black rounded-lg p-3 text-sm font-ui shadow-lg z-10"
-              style={{
-                left: `${Math.min(tooltip.x, 75)}%`,
-                top: `${Math.max(tooltip.y - 10, 5)}%`,
-                transform: 'translateY(-100%)',
-              }}
-            >
-              <div className="font-bold mb-1 text-black">Month {tooltip.data.month}</div>
-              <div className="text-green-600">Revenue: ${Math.round(tooltip.data.revenue).toLocaleString()}</div>
-              <div className="text-red-500">Expenses: ${Math.round(tooltip.data.expenses).toLocaleString()}</div>
-              {tooltip.data.burn > 0 && (
-                <div className="text-blue-600">Burn: ${Math.round(tooltip.data.burn).toLocaleString()}/mo</div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // ─── Input Field ─────────────────────────────────────────────────────────────
-
-    function InputField({ label, value, onChange, prefix, suffix, step = 1, min = 0 }) {
-      const [raw, setRaw] = useState(String(value));
-      const [focused, setFocused] = useState(false);
 
       useEffect(() => {
-        if (!focused) setRaw(String(value));
-      }, [value, focused]);
+        const { lMin: tMin, lMax: tMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        const factor = 0.12, tol = 0.002;
+        function animate() {
+          const dMin = tMin - logMinRef.current;
+          const dMax = tMax - logMaxRef.current;
+          if (Math.abs(dMin) < tol && Math.abs(dMax) < tol) {
+            logMinRef.current = tMin;
+            logMaxRef.current = tMax;
+            forceRender(n => n + 1);
+            rafRef.current = null;
+            return;
+          }
+          logMinRef.current += dMin * factor;
+          logMaxRef.current += dMax * factor;
+          forceRender(n => n + 1);
+          rafRef.current = requestAnimationFrame(animate);
+        }
+        rafRef.current = requestAnimationFrame(animate);
+      }, [rev0, exp0, expGrowth, growth]);
+
+      useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+
+      // Layout — mirrors Trevor's setupLayout()
+      const W = 900, H = 500;
+      const labelW = 72;
+      const plotL = 5 + labelW;   // 77
+      const plotR = W - 20;        // 880
+      const plotT = 45;
+      const plotB = H - 35;        // 465
+      const dragRad = 7;
+
+      // Scale — exact Trevor formulas (convFlowToY, convWeekToX, inverses)
+      // We work in months throughout (Trevor works in weeks; math is equivalent)
+      const nMonths = 36; // 3 years
+
+      const convMonthToX = m => (m / nMonths) * (plotR - plotL) + plotL;
+      const convXToMonth = x => (x - plotL) / (plotR - plotL) * nMonths;
+      const dynMinFlow = Math.exp(logMinRef.current);
+      const dynMaxFlow = Math.exp(logMaxRef.current);
+      const convFlowToY = f => (Math.log(Math.max(f, 1)) - logMinRef.current) / (logMaxRef.current - logMinRef.current) * (plotT - plotB) + plotB;
+      const convYToFlow = y => Math.exp((y - plotB) / (plotT - plotB) * (logMaxRef.current - logMinRef.current) + logMinRef.current);
+
+      const g = growth;
+      const rev0Log = Math.log(Math.max(rev0, 1));
+      const revAtMonth = m => Math.exp(rev0Log + Math.log(1 + g) * m);
+      const expAtMonth = m => exp0 * Math.pow(1 + expGrowth, m);
+
+      // Breakeven — revenue must grow faster than expenses to ever converge
+      const breakevenMonth = rev0 >= exp0 ? 0
+        : (g > expGrowth)
+          ? Math.log(exp0 / rev0) / Math.log((1 + g) / (1 + expGrowth))
+          : null;
+
+      // $100M/yr milestone (Trevor uses $1B/yr — user wants $100M)
+      const ipoFlow = 100000000 / 12; // $8.33M/mo
+      const ipoMonth = (g > 0 && rev0 < ipoFlow)
+        ? Math.log(ipoFlow / rev0) / Math.log(1 + g)
+        : rev0 >= ipoFlow ? 0 : null;
+
+      // Revenue line endpoint: Trevor uses min(nWeeks, ipoWeek)
+      // Line only goes as far as the $100M milestone (or end of chart)
+      const p1Month = (ipoMonth !== null && ipoMonth > 0)
+        ? Math.max(1, Math.min(nMonths, ipoMonth))
+        : nMonths;
+
+      const p0X = convMonthToX(0), p0Y = convFlowToY(rev0);
+      const p1X = convMonthToX(p1Month), p1Y = convFlowToY(revAtMonth(p1Month));
+      const expY = convFlowToY(exp0);
+
+      // Protractor anchored at year 2 (month 24)
+      const protMonth = Math.min(24, nMonths);
+      const protEndX = convMonthToX(protMonth);
+      const protEndY = convFlowToY(revAtMonth(protMonth));
+      const protLen = Math.sqrt((protEndX - p0X) ** 2 + (protEndY - p0Y) ** 2);
+      const protRad = Math.min(
+        (plotR - plotL) * (protMonth / nMonths), // year-2 horizontal distance
+        p0Y - plotT - 10                          // don't arc above chart top
+      );
+
+      // Growth handle: on revenue line at protRad distance from p0, clamped within chart
+      const rawPmX = p0X + (protEndX - p0X) * protRad / protLen;
+      const rawPmY = p0Y + (protEndY - p0Y) * protRad / protLen;
+      const pmX = Math.min(plotR - dragRad - 2, rawPmX);
+      const pmY = Math.max(plotT + dragRad + 4, Math.min(plotB - dragRad - 2, rawPmY));
+
+      // Monthly growth rates for protractor (Trevor's exact list)
+      const monthlyRates = [0, 0.025, 0.05, 0.075, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50];
+
+      // Compute angle for each rate anchored at protMonth (year 2)
+      let maxAngle = 0;
+      const rateLines = monthlyRates.map(gr => {
+        const p3Y = convFlowToY(Math.exp(rev0Log + Math.log(1 + gr) * protMonth));
+        const angle = Math.atan2(p3Y - p0Y, protEndX - p0X);
+        if (angle < maxAngle) maxAngle = angle;
+        const label = gr === 0 ? '0%' : `${Math.round(gr * 100)}%`;
+        return { gr, angle: angle * 180 / Math.PI, label };
+      });
+      maxAngle -= 0.03;
+
+      // Arc endpoints (angle=0 is rightward)
+      const arcStartX = p0X + protRad, arcStartY = p0Y;
+      const arcEndX = p0X + Math.cos(maxAngle) * protRad;
+      const arcEndY = p0Y + Math.sin(maxAngle) * protRad;
+
+      // Capital needed — integral of max(0, exp-rev) from 0 to breakeven
+      let capitalNeeded = 0;
+      if (breakevenMonth !== null && breakevenMonth > 0) {
+        const steps = 200;
+        for (let i = 0; i < steps; i++) {
+          const mo = (breakevenMonth / steps) * (i + 0.5);
+          capitalNeeded += Math.max(0, exp0 - revAtMonth(mo)) * (breakevenMonth / steps);
+        }
+      }
+
+      // Y-axis flow values — log-scale ticks
+      const yFlows = genFlowTicks(dynMinFlow, dynMaxFlow);
+
+      const fmtMoney = v => {
+        if (v >= 1e9) return '$' + Math.round(v/1e9) + 'B';
+        if (v >= 1e6) return '$' + Math.round(v/1e6) + 'M';
+        if (v >= 1e4) return '$' + (v/1e3).toFixed(0) + 'k';
+        return '$' + Math.round(v);
+      };
+      const fmtMonthly = v => fmtMoney(v) + '/mo';
+      const fmtTime = mo => mo < 12 ? `${Math.ceil(mo)} months` : `year ${Math.round(mo / 12)}`;
+
+      // Snap to 2 significant figures so dragging gives clean round numbers
+      const snapMoney = v => {
+        if (v <= 0) return v;
+        const mag = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+        return Math.round(v / mag) * mag;
+      };
+
+      // Drag handlers — Trevor's exact logic: convXToWeek(dragX) + convYToFlow(dragY)
+      function startDrag(which) {
+        return e => {
+          e.preventDefault();
+          dragging.current = which;
+          const svgEl = svgRef.current;
+          const clamp = f => Math.max(200, Math.min(f, 1e9));
+          const onMove = ev => {
+            const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+            const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+            const rect = svgEl.getBoundingClientRect();
+            const sx = (cx - rect.left) / rect.width * W;
+            const sy = (cy - rect.top) / rect.height * H;
+            if (dragging.current === 'rev') {
+              onRev(snapMoney(clamp(convYToFlow(sy))));
+            } else if (dragging.current === 'exp') {
+              onExp(snapMoney(clamp(convYToFlow(sy))));
+            } else if (dragging.current === 'growth') {
+              const dragMonth = convXToMonth(sx);
+              if (dragMonth > 0.5) {
+                const dragRev = clamp(convYToFlow(sy));
+                const rawG = Math.exp(Math.log(dragRev / rev0) / dragMonth) - 1;
+                onGrowth(Math.max(0, Math.min(Math.round(rawG * 100) / 100, 0.70)));
+              }
+            }
+          };
+          const onUp = () => {
+            dragging.current = null;
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+            window.removeEventListener('touchmove', onMove);
+            window.removeEventListener('touchend', onUp);
+          };
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onUp);
+          window.addEventListener('touchmove', onMove, { passive: false });
+          window.addEventListener('touchend', onUp);
+        };
+      }
+
+      const font = 'Arial, sans-serif';
+
+      // Breakeven geometry
+      const bxWithin = breakevenMonth !== null && breakevenMonth > 0 && breakevenMonth <= nMonths;
+      const bx = bxWithin ? convMonthToX(breakevenMonth) : null;
+
+      // Capital label position — Trevor's exact formula
+      const lbMonth = (breakevenMonth !== null && breakevenMonth > 0) ? Math.min(5, breakevenMonth / 4) : 5;
+      const lbX = plotL + 15;
+      const lbY = (convFlowToY(revAtMonth(lbMonth)) + 2 * convFlowToY(expAtMonth(lbMonth))) / 3;
+
+      // $100M milestone geometry
+      const ipoWithin = ipoMonth !== null && ipoMonth > 0 && ipoMonth <= nMonths;
+      const ipoX = ipoWithin ? convMonthToX(ipoMonth) : null;
 
       return (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-ui text-gray-500 uppercase tracking-wider">{label}</label>
-          <div className="flex items-center border border-black rounded-lg px-3 py-2 gap-1 bg-white focus-within:ring-2 focus-within:ring-[#ebff52]">
-            {prefix && <span className="text-gray-400 font-ui text-sm">{prefix}</span>}
-            <input
-              type="number"
-              step={step}
-              min={min}
-              className="w-full outline-none font-ui text-black bg-transparent text-sm"
-              value={raw}
-              onFocus={e => { setFocused(true); e.target.select(); }}
-              onChange={e => setRaw(e.target.value)}
-              onBlur={() => {
-                setFocused(false);
-                const num = parseFloat(raw);
-                if (!isNaN(num) && num >= 0) onChange(num);
-                else setRaw(String(value));
-              }}
-              onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-            />
-            {suffix && <span className="text-gray-400 font-ui text-sm">{suffix}</span>}
+        <div>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ touchAction: 'none' }}>
+          <defs>
+            {/* Capital fill gradient — Trevor: rgba(200,200,255,0.3) → rgba(200,200,255,0.9) bottom→top */}
+            <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(200,200,255,0.9)" />
+              <stop offset="100%" stopColor="rgba(200,200,255,0.3)" />
+            </linearGradient>
+            <clipPath id="chartClip">
+              <rect x={plotL} y={plotT} width={plotR - plotL} height={plotB - plotT} />
+            </clipPath>
+          </defs>
+
+          {/* ── Capital area — traces actual revenue curve, not a triangle ── */}
+          {rev0 < exp0 && (() => {
+            const endMo = bxWithin ? breakevenMonth : nMonths;
+            const steps = 80;
+            // Forward along revenue curve
+            let d = `M ${p0X.toFixed(1)} ${p0Y.toFixed(1)}`;
+            for (let i = 1; i <= steps; i++) {
+              const m = (endMo / steps) * i;
+              d += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(revAtMonth(m)).toFixed(1)}`;
+            }
+            // Backward along expense curve — closes the area between the two curves
+            for (let i = steps; i >= 0; i--) {
+              const m = (endMo / steps) * i;
+              d += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(expAtMonth(m)).toFixed(1)}`;
+            }
+            d += ' Z';
+            return <path clipPath="url(#chartClip)" d={d} fill="url(#capGrad)" />;
+          })()}
+
+          {/* ── Capital needed label ── Trevor's exact position formula */}
+          {rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (
+            <text x={lbX} y={lbY} fontSize="14" fontFamily={font} fontWeight="bold" fill="#000" dominantBaseline="middle">
+              {fmtMoney(capitalNeeded)} capital needed
+            </text>
+          )}
+
+          {/* ── Revenue line ── clipped so it doesn't extend above chart top */}
+          <path d={`M ${p0X} ${p0Y} L ${p1X} ${p1Y}`} stroke="#aaf5aa" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />
+
+          {/* ── Expense line ── curved if expGrowth > 0 */}
+          {(() => {
+            let d = `M ${p0X.toFixed(1)} ${expY.toFixed(1)}`;
+            if (expGrowth > 0) {
+              for (let i = 1; i <= 60; i++) {
+                const m = nMonths * i / 60;
+                d += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(expAtMonth(m)).toFixed(1)}`;
+              }
+            } else {
+              d += ` L ${plotR} ${expY}`;
+            }
+            return <path d={d} stroke="#f5bbbb" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />;
+          })()}
+
+          {/* ── Revenue start label — Trevor: textAlign left, at +15 from p0 along line */}
+          {(() => {
+            const angle = Math.atan2(p1Y - p0Y, p1X - p0X) * 180 / Math.PI;
+            return (
+              <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
+                x={p0X + 15} y={p0Y - 7}
+                textAnchor="start" fontSize="13" fontFamily={font} fontWeight="bold" fill="#000">
+                {fmtMoney(rev0)} revenue per month
+              </text>
+            );
+          })()}
+
+          {/* ── Growth rate label — Trevor: textAlign right, at protRad-12 from p0 along line */}
+          {(() => {
+            const angle = Math.atan2(p1Y - p0Y, p1X - p0X) * 180 / Math.PI;
+            const pct = Math.round(g * 100);
+            return (
+              <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
+                x={p0X + protRad - 12} y={p0Y - 7}
+                textAnchor="end" fontSize="13" fontFamily={font} fontWeight="bold" fill="#000">
+                {`growing ${pct}% monthly`}
+              </text>
+            );
+          })()}
+
+          {/* ── Expense label — Trevor: textAlign left, at +15 from p0 along expense line */}
+          <text x={p0X + 15} y={expY - 7}
+            fontSize="13" fontFamily={font} fontWeight="bold" fill="#000">
+            {fmtMoney(exp0)} expenses per month{expGrowth > 0 ? ` +${Math.round(expGrowth * 100)}%/mo` : ''}
+          </text>
+
+          {/* ── Protractor ── Trevor: tick marks at arc edge + labels, arc counterclockwise */}
+          {rateLines.map(({ gr, angle, label }) => (
+            <g key={gr} transform={`rotate(${angle.toFixed(2)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}>
+              <line x1={p0X + protRad} y1={p0Y} x2={p0X + protRad + 10} y2={p0Y}
+                stroke="#999" strokeWidth="1" />
+              <text x={p0X + protRad + 13} y={p0Y + 4}
+                fontSize="11" fontFamily={font} fill="#666">{label}</text>
+            </g>
+          ))}
+          {/* Arc: from angle=0 (rightward) to maxAngle, counterclockwise (sweep=0 in SVG) */}
+          <path d={`M ${arcStartX.toFixed(1)} ${arcStartY.toFixed(1)} A ${protRad.toFixed(1)} ${protRad.toFixed(1)} 0 0 0 ${arcEndX.toFixed(1)} ${arcEndY.toFixed(1)}`}
+            fill="none" stroke="#999" strokeWidth="1" />
+
+          {/* ── Breakeven annotation ── Trevor: vertical line if within chart, arrow if beyond */}
+          {breakevenMonth !== null && breakevenMonth > 0 && (() => {
+            const label = `Profitable at ${fmtTime(breakevenMonth)}`;
+            if (bx) {
+              const ly = convFlowToY(exp0) + 20;
+              const flipLeft = bx + 5 + label.length * 7 > plotR;
+              return (
+                <g>
+                  <line x1={bx} y1={convFlowToY(exp0)} x2={bx} y2={ly} stroke="#888" strokeWidth="1" />
+                  <text x={flipLeft ? bx - 3 : bx + 3} y={ly + 2}
+                    textAnchor={flipLeft ? 'end' : 'start'} fontSize="13" fontFamily={font} fill="#000" dominantBaseline="top">
+                    {label}
+                  </text>
+                </g>
+              );
+            } else {
+              const py = Math.min(convFlowToY(exp0), plotB - 10);
+              return (
+                <g>
+                  <path d={`M ${plotR} ${py} L ${plotR-20} ${py} M ${plotR} ${py} L ${plotR-8} ${py-3} M ${plotR} ${py} L ${plotR-8} ${py+3}`}
+                    stroke="#888" strokeWidth="1" fill="none" />
+                  <text x={plotR-25} y={py} textAnchor="end" fontSize="13" fontFamily={font} fill="#000" dominantBaseline="middle">
+                    {label}
+                  </text>
+                </g>
+              );
+            }
+          })()}
+
+          {/* ── $100M/yr annotation ── handles both within-scale and above-scale cases */}
+          {ipoMonth !== null && ipoMonth > 0 && (() => {
+            const label = `$100M/yr at ${fmtTime(ipoMonth)}`;
+            const aboveScale = ipoFlow > dynMaxFlow;
+            // When milestone is within time range but above chart scale, anchor at chart top
+            const lineX = ipoX ? ipoX : plotR;
+            const lineY = aboveScale ? plotT + 4 : (ipoX ? convFlowToY(ipoFlow) : Math.min(convFlowToY(revAtMonth(nMonths)), plotB - 30));
+            const p1lx = Math.min(plotR - 20, lineX - 20);
+            return (
+              <g>
+                {aboveScale && ipoX ? (
+                  // Upward arrow at the milestone x-position on the chart top edge
+                  <>
+                    <line x1={lineX} y1={plotT + 20} x2={lineX} y2={plotT + 4} stroke="#888" strokeWidth="1" />
+                    <line x1={lineX} y1={plotT + 4} x2={lineX - 4} y2={plotT + 10} stroke="#888" strokeWidth="1" />
+                    <line x1={lineX} y1={plotT + 4} x2={lineX + 4} y2={plotT + 10} stroke="#888" strokeWidth="1" />
+                    <text x={lineX + 8} y={plotT + 14} textAnchor="start" fontSize="13" fontFamily={font} fill="#000" dominantBaseline="middle">
+                      {label}
+                    </text>
+                  </>
+                ) : (
+                  <>
+                    <line x1={lineX} y1={lineY} x2={p1lx} y2={lineY} stroke="#888" strokeWidth="1" />
+                    {!ipoX && (
+                      <>
+                        <line x1={lineX} y1={lineY} x2={lineX-8} y2={lineY-3} stroke="#888" strokeWidth="1" />
+                        <line x1={lineX} y1={lineY} x2={lineX-8} y2={lineY+3} stroke="#888" strokeWidth="1" />
+                      </>
+                    )}
+                    <text x={p1lx - 5} y={lineY} textAnchor="end" fontSize="13" fontFamily={font} fill="#000" dominantBaseline="middle">
+                      {label}
+                    </text>
+                  </>
+                )}
+              </g>
+            );
+          })()}
+
+          {/* ── Axes ── Trevor: drawAxes() */}
+          <line x1={plotL} y1={plotB} x2={plotR} y2={plotB} stroke="#ccc" strokeWidth="1" />
+          <line x1={plotL} y1={plotT} x2={plotL} y2={plotB} stroke="#ccc" strokeWidth="1" />
+
+          {/* ── X labels ── Trevor: drawXLabels() — "year 0", "year 1", ... */}
+          {[0,1,2,3].map(yr => {
+            const x = convMonthToX(yr * 12);
+            return (
+              <g key={yr}>
+                <line x1={x} y1={plotB} x2={x} y2={plotB + 7} stroke="#888" strokeWidth="1" />
+                <text x={x} y={plotB + 10} textAnchor="middle" fontSize="12" fontFamily={font} fill="#888" dominantBaseline="top">
+                  {yr === 0 ? 'today' : yr === 3 ? '3 years' : `year ${yr}`}
+                </text>
+              </g>
+            );
+          })}
+
+          {yFlows.map(flow => {
+            const y = convFlowToY(flow);
+            if (y < plotT || y > plotB) return null;
+            return (
+              <g key={flow}>
+                <line x1={plotL} y1={y} x2={plotL - 10} y2={y} stroke="#888" strokeWidth="1" />
+                <text x={plotL - 12} y={y} textAnchor="end" fontSize="11" fontFamily={font} fill="#888" dominantBaseline="middle">
+                  {fmtMoney(flow)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── Drag handles ── Trevor: drawDragHandle() red=exp, green=rev */}
+          {/* Revenue handle at p0 */}
+          <circle cx={p0X} cy={p0Y} r={dragRad} fill="#00cc00" stroke="#007a00" strokeWidth={dragRad/4}
+            style={{ cursor: 'ns-resize' }}
+            onMouseDown={startDrag('rev')} onTouchStart={startDrag('rev')} />
+          <circle cx={p0X} cy={p0Y} r={dragRad * 0.25} fill="#00ff00" style={{ pointerEvents: 'none' }} />
+
+          {/* Growth handle at pm (on revenue line at protRad) — orange to distinguish from rev handle */}
+          <circle cx={pmX} cy={pmY} r={dragRad + 2} fill="#ff8800" stroke="#cc5500" strokeWidth={2}
+            style={{ cursor: 'ns-resize' }}
+            onMouseDown={startDrag('growth')} onTouchStart={startDrag('growth')} />
+
+          {/* Expense handle at (p0X, expY) */}
+          <circle cx={p0X} cy={expY} r={dragRad} fill="#ff0000" stroke="#b20000" strokeWidth={dragRad/4}
+            style={{ cursor: 'ns-resize' }}
+            onMouseDown={startDrag('exp')} onTouchStart={startDrag('exp')} />
+          <circle cx={p0X} cy={expY} r={dragRad * 0.25} fill="#ff5555" style={{ pointerEvents: 'none' }} />
+        </svg>
+          {/* Mobile callout */}
+          <div className="md:hidden" style={{ marginTop: '6px', fontSize: '13px', color: '#6b7280', textAlign: 'center', fontFamily: 'Artex, sans-serif' }}>
+            {breakevenMonth !== null && breakevenMonth > 0
+              ? `Profitable in ${Math.ceil(breakevenMonth)} months at ${Math.round(growth * 100)}% growth`
+              : breakevenMonth === 0
+              ? `Already profitable at ${Math.round(growth * 100)}% growth`
+              : `Not profitable at ${Math.round(growth * 100)}% growth`}
           </div>
         </div>
       );
@@ -429,19 +556,45 @@
     // ─── App ──────────────────────────────────────────────────────────────────────
 
     function App() {
-      const defaults = useMemo(getDefaults, []);
-      const [revenue,  setRevenue]  = useState(defaults.revenue);
-      const [expenses, setExpenses] = useState(defaults.expenses);
-      const [growth,   setGrowth]   = useState(defaults.growth);
-      const [cash,     setCash]     = useState(defaults.cash);
-      const [copied,   setCopied]   = useState(false);
+      const defaults = useMemo(() => {
+        const p = new URLSearchParams(window.location.search);
+        return {
+          rev: Number(p.get('r')) || 10000,
+          exp: Number(p.get('e')) || 25000,
+          g:   Number(p.get('g')) || 0.10,
+          eg:  Number(p.get('eg')) || 0,
+        };
+      }, []);
 
-      const result = useMemo(
-        () => calcGrowth({ revenue, expenses, growth, cash }),
-        [revenue, expenses, growth, cash]
-      );
+      const [rev0,      setRev0]      = useState(defaults.rev);
+      const [exp0,      setExp0]      = useState(defaults.exp);
+      const [growth,    setGrowth]    = useState(defaults.g);
+      const [expGrowth, setExpGrowth] = useState(defaults.eg);
+      const [copied,    setCopied]    = useState(false);
+      const [showExact, setShowExact] = useState(false);
 
-      useEffect(() => encodeState({ revenue, expenses, growth, cash }), [revenue, expenses, growth, cash]);
+      useEffect(() => {
+        const p = new URLSearchParams({ r: Math.round(rev0), e: Math.round(exp0), g: growth.toFixed(4), eg: expGrowth.toFixed(4) });
+        window.history.replaceState(null, '', '?' + p.toString());
+      }, [rev0, exp0, growth, expGrowth]);
+
+      const g = growth;
+      const breakevenMonth = rev0 >= exp0 ? 0
+        : (g > expGrowth)
+          ? Math.log(exp0 / rev0) / Math.log((1 + g) / (1 + expGrowth))
+          : null;
+
+      let capitalNeeded = 0;
+      if (breakevenMonth !== null && breakevenMonth > 0) {
+        const steps = 200;
+        for (let i = 0; i < steps; i++) {
+          const mo = (breakevenMonth / steps) * (i + 0.5);
+          capitalNeeded += Math.max(0, exp0 * Math.pow(1 + expGrowth, mo) - rev0 * Math.pow(1 + g, mo)) * (breakevenMonth / steps);
+        }
+      }
+
+      const defaultAlive = breakevenMonth !== null;
+      const fmt = n => n >= 1e6 ? `$${Math.round(n/1e6)}M` : n >= 1000 ? `$${Math.round(n/1000)}k` : `$${Math.round(n)}`;
 
       function copyLink() {
         navigator.clipboard.writeText(window.location.href);
@@ -449,80 +602,224 @@
         setTimeout(() => setCopied(false), 2000);
       }
 
-      const { months, profitMonth, capitalNeeded, defaultAlive, runwayMonths, monthlyBurn } = result;
+      // Milestones data
+      const MILESTONES = [
+        { name: 'Wealthsimple', arr: 265_000_000, logo: 'https://cdn.simpleicons.org/wealthsimple' },
+        { name: 'Shopify', arr: 8_900_000_000, logo: 'https://cdn.simpleicons.org/shopify' },
+        { name: 'Stripe', arr: 15_000_000_000, logo: 'https://cdn.simpleicons.org/stripe' },
+        { name: 'Apple', arr: 391_000_000_000, logo: 'https://cdn.simpleicons.org/apple' },
+      ];
 
-      const fmt = n =>
-        n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M`
-        : n >= 1000    ? `$${(n / 1000).toFixed(0)}k`
-        :                `$${Math.round(n).toLocaleString()}`;
+      const fmtRevenue = v => {
+        if (v >= 1e9) return `$${(v/1e9).toFixed(0)}B revenue`;
+        if (v >= 1e6) return `$${(v/1e6).toFixed(0)}M revenue`;
+        return `$${(v/1e3).toFixed(0)}k revenue`;
+      };
+
+      const fmtTimeLong = mo => {
+        if (mo < 1) return 'now';
+        if (mo < 12) return `${Math.ceil(mo)} months`;
+        const yrs = mo / 12;
+        return `${Math.round(yrs)} years`;
+      };
+
+      const milestoneMonths = MILESTONES.map(m => {
+        const targetMonthly = m.arr / 12;
+        if (rev0 >= targetMonthly) return 0; // already passed
+        if (growth <= 0) return null; // never
+        return Math.log(targetMonthly / rev0) / Math.log(1 + growth);
+      });
 
       return (
-        <div className="font-ui" style={{ backgroundColor: '#fff' }}>
-
+        <div style={{ backgroundColor: '#fff', fontFamily: 'Artex, system-ui, sans-serif' }}>
           <main className="max-w-5xl mx-auto px-4 py-3">
 
-            {/* Chart */}
+            <div style={{ marginBottom: '16px' }}>
+              <h1 style={{ fontFamily: 'Feature Display, serif', fontSize: '28px', fontWeight: 'normal', margin: '0 0 4px 0', lineHeight: 1.1 }}>
+                Startup Growth Calculator
+              </h1>
+              <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
+                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for Canadian founders by TechTO.
+              </p>
+            </div>
+
             <div className="fadein-1">
-              <GrowthChart months={months} profitMonth={profitMonth} />
+              <GrowthChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth}
+                onRev={setRev0} onExp={setExp0} onGrowth={setGrowth} />
             </div>
 
-            {/* Status Pill + inline description */}
-            <div className="fadein-2 flex items-center gap-3 mt-2 mb-3">
-              <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border-2 font-ui font-bold text-sm flex-shrink-0 ${
-                defaultAlive
-                  ? 'bg-green-50 border-green-500 text-green-700'
-                  : 'bg-red-50 border-red-500 text-red-700'
-              }`}>
-                {defaultAlive ? '✓ Default Alive' : '✗ Default Dead'}
+            {/* Exact number entry — left edge aligned with "today" x-axis label (plotL/W = 77/900) */}
+            <div style={{ marginTop: '12px', paddingLeft: 'calc(77 / 900 * 100%)' }}>
+              <a onClick={() => setShowExact(s => !s)}
+                style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                {showExact ? 'hide exact numbers' : 'enter exact numbers'}
+              </a>
+              {showExact && (() => {
+                const parseMoney = s => {
+                  s = s.replace(/[$,\s]/g, '').toLowerCase();
+                  if (s.endsWith('k')) return parseFloat(s) * 1000;
+                  if (s.endsWith('m')) return parseFloat(s) * 1000000;
+                  return parseFloat(s);
+                };
+                const fieldStyle = { width: '90px', fontSize: '12px', padding: '3px 6px', border: '1px solid #e5e7eb', borderRadius: '5px', textAlign: 'right', fontFamily: 'Artex, sans-serif', outline: 'none' };
+                const labelStyle = { fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '2px' };
+                const fmtVal = v => v >= 1e6 ? `$${Math.round(v/1e6)}M` : v >= 1e3 ? `$${Math.round(v/1e3)}k` : `$${Math.round(v)}`;
+                return (
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div>
+                      <span style={labelStyle}>Revenue /mo</span>
+                      <input key={'r'+rev0} type="text" defaultValue={fmtVal(rev0)}
+                        onFocus={e => { e.target.value = Math.round(rev0); e.target.select(); }}
+                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setRev0(v); else e.target.value = fmtVal(rev0); }}
+                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                        style={fieldStyle} />
+                    </div>
+                    <div>
+                      <span style={labelStyle}>Expenses /mo</span>
+                      <input key={'e'+exp0} type="text" defaultValue={fmtVal(exp0)}
+                        onFocus={e => { e.target.value = Math.round(exp0); e.target.select(); }}
+                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setExp0(v); else e.target.value = fmtVal(exp0); }}
+                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                        style={fieldStyle} />
+                    </div>
+                    <div>
+                      <span style={labelStyle}>Expense growth /mo</span>
+                      <input key={'eg'+expGrowth} type="text" defaultValue={Math.round(expGrowth * 100) + '%'}
+                        onFocus={e => { e.target.value = Math.round(expGrowth * 100); e.target.select(); }}
+                        onBlur={e => { const v = parseFloat(e.target.value.replace(/%/g, '')); if (!isNaN(v) && v >= 0) setExpGrowth(Math.min(v / 100, 0.50)); else e.target.value = Math.round(expGrowth * 100) + '%'; }}
+                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                        style={fieldStyle} />
+                    </div>
+                    <div>
+                      <span style={labelStyle}>Revenue growth /mo</span>
+                      <input key={'g'+growth} type="text" defaultValue={Math.round(growth * 100) + '%'}
+                        onFocus={e => { e.target.value = Math.round(growth * 100); e.target.select(); }}
+                        onBlur={e => { const v = parseFloat(e.target.value.replace(/%/g, '')); if (!isNaN(v) && v >= 0) setGrowth(Math.min(v / 100, 0.70)); else e.target.value = Math.round(growth * 100) + '%'; }}
+                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                        style={fieldStyle} />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="fadein-2 mt-3">
+              <span style={{ fontSize: '12px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {defaultAlive && breakevenMonth > 0
+                  ? `Profitable in ${Math.ceil(breakevenMonth)} months at ${Math.round(growth * 100)}% revenue growth${expGrowth > 0 ? ` and expenses growing ${Math.round(expGrowth * 100)}%/mo` : ` and expenses fixed at ${fmt(exp0)}`}. Capital needed: ${fmt(capitalNeeded)}.`
+                  : defaultAlive && breakevenMonth === 0
+                  ? `Already profitable at ${Math.round(growth * 100)}% monthly growth.`
+                  : `Never reaches profitability — expenses growing faster than revenue.`}
               </span>
-              <span className="text-gray-500 font-ui text-xs">
-                {defaultAlive
-                  ? `Profitability in ${Math.ceil(profitMonth)} months — without raising another dollar.`
-                  : profitMonth !== null
-                    ? `Needs ${fmt(capitalNeeded)} to reach profitability in ${Math.ceil(profitMonth)} months. ${runwayMonths != null ? `${runwayMonths} months runway.` : ''}`
-                    : `Will never reach profitability at current growth rate. Grow faster or cut expenses.`
-                }
-              </span>
             </div>
 
-            {/* Metric Cards */}
-            <div className="fadein-3 grid grid-cols-3 gap-3 mb-3">
-              {[
-                { label: 'Months to Profit', value: profitMonth !== null ? Math.ceil(profitMonth) : '∞' },
-                { label: 'Capital Needed',   value: fmt(capitalNeeded) },
-                { label: 'Monthly Burn',     value: fmt(monthlyBurn) },
-              ].map(({ label, value }) => (
-                <div key={label} className="border border-black rounded-xl p-3">
-                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-0.5 font-ui">{label}</div>
-                  <div className="font-display text-2xl text-black">{value}</div>
-                </div>
-              ))}
+            {/* Milestones Panel */}
+            <div style={{ marginBottom: '20px', marginTop: '40px' }}>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                At your current growth rate, here's when you'll hit the milestones that matter.
+              </p>
+
+              {/* Generic milestones row */}
+              {(() => {
+                const genericMilestones = [
+                  { label: 'Default Alive', arr: null },
+                  { label: '$1M / year', arr: 1_000_000 },
+                  { label: '$10M / year', arr: 10_000_000 },
+                  { label: '$100M / year', arr: 100_000_000 },
+                ];
+                const moForGeneric = genericMilestones.map(m => {
+                  if (m.arr === null) return breakevenMonth;
+                  const target = m.arr / 12;
+                  if (rev0 >= target) return 0;
+                  if (growth <= 0) return null;
+                  return Math.log(target / rev0) / Math.log(1 + growth);
+                });
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '12px' }}>
+                    {genericMilestones.map((m, i) => {
+                      const mo = moForGeneric[i];
+                      const passed = mo === 0;
+                      const never = mo === null;
+                      return (
+                        <div key={i} style={{
+                          border: `1.5px solid ${passed ? '#22c55e' : '#e5e7eb'}`,
+                          borderRadius: '10px',
+                          padding: '14px 16px',
+                          background: passed ? '#f0fdf4' : '#fff',
+                        }}>
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'Feature Display, serif', color: passed ? '#16a34a' : never ? '#9ca3af' : '#111', marginBottom: '4px', lineHeight: 1.2 }}>
+                            {m.label}
+                          </div>
+                          <div style={{ fontSize: '12px', color: passed ? '#16a34a' : never ? '#9ca3af' : '#6b7280' }}>
+                            {passed ? 'Already here' : never ? 'Never' : fmtTimeLong(mo)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Company milestones */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+                {MILESTONES.map((m, i) => {
+                  const mo = milestoneMonths[i];
+                  const passed = mo === 0;
+                  const never = mo === null;
+                  return (
+                    <div key={i} style={{
+                      border: `1.5px solid ${passed ? '#22c55e' : '#e5e7eb'}`,
+                      borderRadius: '10px',
+                      padding: '14px 16px',
+                      background: passed ? '#f0fdf4' : '#fff',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}>
+                      {passed && (
+                        <div style={{
+                          position: 'absolute', top: '8px', right: '10px',
+                          fontSize: '11px', fontWeight: 'bold', color: '#16a34a',
+                        }}>✓ Passed</div>
+                      )}
+                      <img
+                        src={m.logo}
+                        alt={m.name}
+                        style={{ width: '24px', height: '24px', objectFit: 'contain', filter: passed ? 'none' : 'grayscale(100%)', marginBottom: '8px', display: 'block' }}
+                        onError={e => { e.target.style.display = 'none'; }}
+                      />
+                      <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', lineHeight: 1.2 }}>
+                        {m.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{fmtRevenue(m.arr)}</div>
+                      <div style={{
+                        marginTop: '10px',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        fontFamily: 'Feature Display, serif',
+                        color: passed ? '#16a34a' : never ? '#9ca3af' : '#111',
+                      }}>
+                        {passed ? 'Already here' : never ? 'Never' : fmtTimeLong(mo)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Inputs */}
-            <div className="fadein-4 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border border-black rounded-xl bg-gray-50 mb-3">
-              <InputField label="Monthly Revenue"  value={revenue}  onChange={setRevenue}  prefix="$" />
-              <InputField label="Monthly Expenses" value={expenses} onChange={setExpenses} prefix="$" />
-              <InputField label="Monthly Growth"   value={growth}   onChange={setGrowth}   suffix="%" step={0.1} />
-              <InputField label="Cash on Hand"     value={cash}     onChange={setCash}     prefix="$" />
-            </div>
-
-            {/* Actions */}
-            <div className="fadein-5">
-              <button
-                onClick={copyLink}
-                className="button w-button"
-              >
-                {copied ? '✓ Copied!' : 'Copy Shareable Link'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px', marginBottom: '20px' }}>
+              <button onClick={copyLink} className="button w-button">
+                {copied ? '✓ Copied!' : 'Copy Link'}
               </button>
+              <a onClick={() => { setRev0(10000); setExp0(25000); setGrowth(0.10); setExpGrowth(0); }}
+                style={{ fontSize: '12px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                Reset
+              </a>
             </div>
 
           </main>
 
-          {/* Fixed bottom dock — CTA + lattice peek, exactly like TechTO homepage */}
+          {/* Fixed bottom dock */}
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10, background: '#fff' }}>
-
-            {/* CTA row */}
             <div className="fadein-6 padding-global">
               <div className="container-large">
                 <div className="padding-bottom padding-medium">
@@ -535,18 +832,12 @@
                 </div>
               </div>
             </div>
-
-            {/* Lattice peek — exact TechTO Grid.svg via CDN, same as .bg-grid class */}
             <div style={{
               height: '60px',
               backgroundImage: "url('https://cdn.prod.website-files.com/66f1864b4a6f3045a6a2ca3e/66f4193346a254b2220786a2_Grid.svg')",
-              backgroundPosition: '50% 0',
-              backgroundRepeat: 'no-repeat',
-              backgroundSize: 'cover',
+              backgroundPosition: '50% 0', backgroundRepeat: 'no-repeat', backgroundSize: 'cover',
             }} />
-
           </div>
-
         </div>
       );
     }
@@ -555,56 +846,35 @@
   </script>
   <script src="webflow-export/js/webflow.js"></script>
   <script>
-    // Button text scramble — matches TechTO's GSAP ScrambleTextPlugin effect
     (function () {
       const chars = 'abcdefghijklmnopqrstuvwxyz';
       const initialized = new WeakSet();
-
       function addScramble(btn) {
         if (initialized.has(btn)) return;
         initialized.add(btn);
-
         let frame, running = false, original = '';
-
         btn.addEventListener('mouseenter', () => {
           original = btn.textContent.trim();
           if (running) cancelAnimationFrame(frame);
           running = true;
-          const start = performance.now();
-          const duration = 300;
-
+          const start = performance.now(), duration = 300;
           (function tick(now) {
             const t = Math.min((now - start) / duration, 1);
             const resolved = Math.floor(t * original.length);
             btn.textContent = original.split('').map((c, i) =>
               c === ' ' ? ' ' : i < resolved ? c : chars[Math.floor(Math.random() * chars.length)]
             ).join('');
-            if (t < 1) {
-              frame = requestAnimationFrame(tick);
-            } else {
-              btn.textContent = original;
-              running = false;
-            }
+            if (t < 1) { frame = requestAnimationFrame(tick); }
+            else { btn.textContent = original; running = false; }
           })(performance.now());
         });
-
         btn.addEventListener('mouseleave', () => {
-          if (running) {
-            cancelAnimationFrame(frame);
-            btn.textContent = original;
-            running = false;
-          }
+          if (running) { cancelAnimationFrame(frame); btn.textContent = original; running = false; }
         });
       }
-
-      function init() {
-        document.querySelectorAll('.button').forEach(addScramble);
-      }
-
-      // Init on load, then watch for React-rendered buttons
+      function init() { document.querySelectorAll('.button').forEach(addScramble); }
       init();
-      const observer = new MutationObserver(init);
-      observer.observe(document.body, { childList: true, subtree: true });
+      new MutationObserver(init).observe(document.body, { childList: true, subtree: true });
     })();
   </script>
 </body>
