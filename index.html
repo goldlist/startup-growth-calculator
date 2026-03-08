@@ -138,7 +138,7 @@
     // Source: https://gitlab.com/tlb/startuptools
     // Trevor's chart uses HTML5 Canvas; this is an SVG port of his exact logic.
 
-    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth, summaryText }) {
+    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth, summaryText, capitalNeeded }) {
       const svgRef = useRef(null);
       const containerRef = useRef(null);
       const dragging = useRef(null);
@@ -361,6 +361,10 @@
       const lbX = plotL + 15;
       const lbY = (convFlowToY(revAtMonth(lbMonth)) + 2 * convFlowToY(expAtMonth(lbMonth))) / 3;
 
+      // Tight-lines detection — when rev and exp handles are too close to label inline
+      const expY0 = convFlowToY(exp0);
+      const tightLines = Math.abs(p0Y - expY0) < fsAnnot * 3.5;
+
       // $100M milestone geometry
       const ipoWithin = ipoMonth !== null && ipoMonth > 0 && ipoMonth <= nMonths;
       const ipoX = ipoWithin ? convMonthToX(ipoMonth) : null;
@@ -398,24 +402,17 @@
             return <path clipPath="url(#chartClip)" d={d} fill="url(#capGrad)" />;
           })()}
 
-          {/* ── Capital needed label ── inside area, or floated above when gap is too narrow */}
-          {rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (() => {
+          {/* ── Capital needed label (wide-gap case only) ── */}
+          {!tightLines && rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (() => {
             const label = `${fmtMoney(capitalNeeded)} capital needed`;
-            const revYatLb = convFlowToY(revAtMonth(lbMonth));
-            const expYatLb = convFlowToY(expAtMonth(lbMonth));
-            const gap = revYatLb - expYatLb; // SVG: rev < exp in $, so revY > expY
-            const minGap = fsCapLabel * 2.5;
-            const ty = gap < minGap
-              ? Math.max(plotT + fsCapLabel, expYatLb - fsCapLabel * 0.8)  // float above expense line
-              : lbY;
             const textW = label.length * fsCapLabel * 0.58 + 8;
             const textH = fsCapLabel * 1.4;
             return (
-              <g>
-                <rect x={lbX - 4} y={ty - textH / 2} width={textW} height={textH}
-                  fill="white" fillOpacity="0.85" rx="3" style={{ pointerEvents: 'none' }} />
-                <text x={lbX} y={ty} fontSize={fsCapLabel} fontFamily={font} fontWeight="bold"
-                  fill="#000" dominantBaseline="middle" style={{ pointerEvents: 'none' }}>
+              <g style={{ pointerEvents: 'none' }}>
+                <rect x={lbX - 4} y={lbY - textH / 2} width={textW} height={textH}
+                  fill="white" fillOpacity="0.85" rx="3" />
+                <text x={lbX} y={lbY} fontSize={fsCapLabel} fontFamily={font} fontWeight="bold"
+                  fill="#000" dominantBaseline="middle">
                   {label}
                 </text>
               </g>
@@ -485,8 +482,8 @@
             return <path d={d} stroke="#ff5252" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />;
           })()}
 
-          {/* ── Revenue start label — Trevor: textAlign left, at +15 from p0 along line */}
-          {(() => {
+          {/* ── Revenue start label — suppressed when lines are tight ── */}
+          {!tightLines && (() => {
             const angle = Math.atan2(p1Y - p0Y, p1X - p0X) * 180 / Math.PI;
             return (
               <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
@@ -510,11 +507,46 @@
             );
           })()}
 
-          {/* ── Expense label — Trevor: textAlign left, at +15 from p0 along expense line */}
-          <text x={p0X + 15} y={expY - 7}
-            fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
-            {fmtMoney(exp0)} expenses per month{expGrowth > 0 ? ` +${Math.round(expGrowth * 100)}%/mo` : ''}
-          </text>
+          {/* ── Expense label — suppressed when lines are tight ── */}
+          {!tightLines && (
+            <text x={p0X + 15} y={expY - 7}
+              fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
+              {fmtMoney(exp0)} expenses per month{expGrowth > 0 ? ` +${Math.round(expGrowth * 100)}%/mo` : ''}
+            </text>
+          )}
+
+          {/* ── Tight-lines floating legend — replaces all inline labels when crowded ── */}
+          {tightLines && (() => {
+            const lines = [
+              { text: `${fmtMoney(rev0)} revenue / mo`, dot: '#ebff52', stroke: '#b8cc1a' },
+              { text: `${fmtMoney(exp0)} expenses / mo`, dot: '#ff5252', stroke: '#cc1a1a' },
+              ...(rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && capitalNeeded > 0
+                ? [{ text: `${fmtMoney(capitalNeeded)} capital needed`, dot: '#d2f5ff', stroke: '#aac8d8' }]
+                : []),
+            ];
+            const lineH = fsAnnot + 7;
+            const pad = 9;
+            const maxW = Math.max(...lines.map(l => l.text.length)) * fsAnnot * 0.54 + pad * 2 + 14;
+            const boxH = lines.length * lineH + pad * 1.5;
+            const bx = plotL + 10;
+            const by = plotT + 10;
+            return (
+              <g style={{ pointerEvents: 'none' }}>
+                <rect x={bx} y={by} width={maxW} height={boxH}
+                  fill="white" fillOpacity="0.93" rx="5" stroke="#e5e7eb" strokeWidth="1" />
+                {lines.map((line, i) => (
+                  <g key={i}>
+                    <circle cx={bx + pad + 4} cy={by + pad + lineH * i + lineH / 2}
+                      r={4} fill={line.dot} stroke={line.stroke} strokeWidth="1" />
+                    <text x={bx + pad + 13} y={by + pad + lineH * i + lineH / 2}
+                      fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000" dominantBaseline="middle">
+                      {line.text}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            );
+          })()}
 
           {/* ── Protractor ── Trevor: tick marks at arc edge + labels, arc counterclockwise */}
           {rateLines.map(({ gr, angle, label }) => (
@@ -560,7 +592,7 @@
 
           {/* ── $100M/yr annotation ── handles both within-scale and above-scale cases */}
           {ipoMonth !== null && ipoMonth > 0 && (() => {
-            const label = `$100M/yr at ${fmtTime(ipoMonth)}`;
+            const label = `$100M run rate at ${fmtTime(ipoMonth)}`;
             const aboveScale = ipoFlow > dynMaxFlow;
             // When milestone is within time range but above chart scale, anchor at chart top
             const lineX = ipoX ? ipoX : plotR;
@@ -607,11 +639,11 @@
             <path d={`M ${plotL - 3.5} ${plotT + 5} L ${plotL} ${plotT + 10} L ${plotL + 3.5} ${plotT + 5}`} />
           </g>
 
-          {/* ── Y-axis auto-scale hint — arrow at axis bottom (shown until at min) ── */}
+          {/* ── Y-axis auto-scale hint — arrow at axis bottom, tip at plotB+5 (tick depth) ── */}
           {dynMinFlow > 200 && (
             <g stroke="#ccc" strokeWidth="1.2" fill="none">
-              <line x1={plotL} y1={plotB} x2={plotL} y2={plotB + 12} />
-              <path d={`M ${plotL - 3.5} ${plotB + 8} L ${plotL} ${plotB + 13} L ${plotL + 3.5} ${plotB + 8}`} />
+              <line x1={plotL} y1={plotB} x2={plotL} y2={plotB + 3} />
+              <path d={`M ${plotL - 3.5} ${plotB + 1} L ${plotL} ${plotB + 5} L ${plotL + 3.5} ${plotB + 1}`} />
             </g>
           )}
 
@@ -775,6 +807,7 @@
             <div className="fadein-1">
               <GrowthChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth}
                 onRev={setRev0} onExp={setExp0} onGrowth={setGrowth}
+                capitalNeeded={capitalNeeded}
                 summaryText={
                   defaultAlive && breakevenMonth > 0
                     ? `Profitable in ${Math.ceil(breakevenMonth)} months at ${Math.round(growth * 100)}% growth · ${fmt(capitalNeeded)} needed`
