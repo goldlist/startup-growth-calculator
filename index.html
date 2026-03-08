@@ -398,12 +398,29 @@
             return <path clipPath="url(#chartClip)" d={d} fill="url(#capGrad)" />;
           })()}
 
-          {/* ── Capital needed label ── Trevor's exact position formula */}
-          {rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (
-            <text x={lbX} y={lbY} fontSize={fsCapLabel} fontFamily={font} fontWeight="bold" fill="#000" dominantBaseline="middle">
-              {fmtMoney(capitalNeeded)} capital needed
-            </text>
-          )}
+          {/* ── Capital needed label ── inside area, or floated above when gap is too narrow */}
+          {rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (() => {
+            const label = `${fmtMoney(capitalNeeded)} capital needed`;
+            const revYatLb = convFlowToY(revAtMonth(lbMonth));
+            const expYatLb = convFlowToY(expAtMonth(lbMonth));
+            const gap = revYatLb - expYatLb; // SVG: rev < exp in $, so revY > expY
+            const minGap = fsCapLabel * 2.5;
+            const ty = gap < minGap
+              ? Math.max(plotT + fsCapLabel, expYatLb - fsCapLabel * 0.8)  // float above expense line
+              : lbY;
+            const textW = label.length * fsCapLabel * 0.58 + 8;
+            const textH = fsCapLabel * 1.4;
+            return (
+              <g>
+                <rect x={lbX - 4} y={ty - textH / 2} width={textW} height={textH}
+                  fill="white" fillOpacity="0.85" rx="3" style={{ pointerEvents: 'none' }} />
+                <text x={lbX} y={ty} fontSize={fsCapLabel} fontFamily={font} fontWeight="bold"
+                  fill="#000" dominantBaseline="middle" style={{ pointerEvents: 'none' }}>
+                  {label}
+                </text>
+              </g>
+            );
+          })()}
 
           {/* ── Costs-exceed-revenue zone: profitable now but expenses growing faster ── */}
           {rev0 > exp0 && expGrowth > g && (() => {
