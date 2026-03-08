@@ -130,7 +130,7 @@
     // Source: https://gitlab.com/tlb/startuptools
     // Trevor's chart uses HTML5 Canvas; this is an SVG port of his exact logic.
 
-    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth }) {
+    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth, summaryText }) {
       const svgRef = useRef(null);
       const dragging = useRef(null);
       const [, forceRender] = useState(0);
@@ -605,6 +605,15 @@
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('exp')} onTouchStart={startDrag('exp')} />
           <circle cx={p0X} cy={expY} r={dragRad * 0.25} fill="#ff9090" style={{ pointerEvents: 'none' }} />
+
+          {/* ── Summary sentence — right-aligned just above x-axis ── */}
+          {summaryText && (
+            <text x={plotR} y={plotB - 8} textAnchor="end" fontSize="11" fontFamily={font}
+              fill="#9ca3af" letterSpacing="0.08em" dominantBaseline="bottom"
+              style={{ pointerEvents: 'none' }}>
+              {summaryText.toUpperCase()}
+            </text>
+          )}
         </svg>
           {/* Mobile callout */}
           <div className="md:hidden" style={{ marginTop: '6px', fontSize: '13px', color: '#6b7280', textAlign: 'center', fontFamily: 'Artex, sans-serif' }}>
@@ -710,7 +719,14 @@
 
             <div className="fadein-1">
               <GrowthChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth}
-                onRev={setRev0} onExp={setExp0} onGrowth={setGrowth} />
+                onRev={setRev0} onExp={setExp0} onGrowth={setGrowth}
+                summaryText={
+                  defaultAlive && breakevenMonth > 0
+                    ? `Profitable in ${Math.ceil(breakevenMonth)} months at ${Math.round(growth * 100)}% growth · ${fmt(capitalNeeded)} needed`
+                    : defaultAlive && breakevenMonth === 0
+                    ? `Already profitable at ${Math.round(growth * 100)}% monthly growth`
+                    : `Costs growing faster than revenue — no profitability`
+                } />
             </div>
 
             {/* Exact number entry — left edge aligned with "today" x-axis label (plotL/W = 77/900) */}
@@ -765,16 +781,6 @@
                   </div>
                 );
               })()}
-            </div>
-
-            <div className="fadein-2 mt-3">
-              <span style={{ fontSize: '12px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {defaultAlive && breakevenMonth > 0
-                  ? `Profitable in ${Math.ceil(breakevenMonth)} months at ${Math.round(growth * 100)}% revenue growth${expGrowth > 0 ? ` and expenses growing ${Math.round(expGrowth * 100)}%/mo` : ` and expenses fixed at ${fmt(exp0)}`}. Capital needed: ${fmt(capitalNeeded)}.`
-                  : defaultAlive && breakevenMonth === 0
-                  ? `Already profitable at ${Math.round(growth * 100)}% monthly growth.`
-                  : `Never reaches profitability — expenses growing faster than revenue.`}
-              </span>
             </div>
 
             {/* Milestones Panel */}
