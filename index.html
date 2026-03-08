@@ -480,15 +480,15 @@
             );
           })()}
 
-          {/* ── Growth rate label — Trevor: textAlign right, at protRad-12 from p0 along line */}
+          {/* ── Growth rate label — after the protractor arc */}
           {(() => {
             const angle = Math.atan2(p1Y - p0Y, p1X - p0X) * 180 / Math.PI;
             const pct = Math.round(g * 100);
             return (
               <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
-                x={p0X + protRad - 12} y={p0Y - 7}
-                textAnchor="end" fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
-                {`growing ${pct}% monthly`}
+                x={p0X + protRad + 15} y={p0Y - 7}
+                textAnchor="start" fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
+                {isMobile ? `${pct}% / mo` : `growing ${pct}% monthly`}
               </text>
             );
           })()}
