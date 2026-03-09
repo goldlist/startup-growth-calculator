@@ -57,8 +57,8 @@
     .m-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #111827; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.1s; }
     .m-slider:active::-webkit-slider-thumb { transform: scale(1.15); }
     .m-slider::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #111827; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
-    .m-slider.s-green::-webkit-slider-thumb, .m-slider.s-green::-moz-range-thumb { background: #16a34a; }
-    .m-slider.s-orange::-webkit-slider-thumb, .m-slider.s-orange::-moz-range-thumb { background: #f97316; }
+    .m-slider.s-rev::-webkit-slider-thumb,  .m-slider.s-rev::-moz-range-thumb  { background: #b8cc1a; }
+    .m-slider.s-exp::-webkit-slider-thumb,  .m-slider.s-exp::-moz-range-thumb  { background: #ff5252; }
   </style>
   <script>
     let vh = window.innerHeight * 0.01;
@@ -141,7 +141,7 @@
       return { lMin: lMin - pad, lMax: lMax + pad };
     }
 
-    // ─── Mobile-only simplified chart (display only, no interaction) ─────────────
+    // ─── Mobile chart — same visual language as desktop, display-only ────────────
     function MobileSimpleChart({ rev0, exp0, expGrowth, growth, breakevenMonth }) {
       const [, forceRender] = useState(0);
       const logMinRef = useRef(null);
@@ -172,28 +172,94 @@
       }, [rev0, exp0, expGrowth, growth]);
       useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
-      const W = 400, H = 190, plotL = 4, plotR = 396, plotT = 10, plotB = 178, nMonths = 36;
+      const W = 500, H = 300, plotL = 52, plotR = 488, plotT = 14, plotB = 268, nMonths = 36;
+      const font = 'Artex, system-ui, sans-serif';
       const convMonthToX = m => plotL + (m / nMonths) * (plotR - plotL);
       const convFlowToY  = v => plotB - (Math.log(Math.max(v, 1)) - logMinRef.current) / (logMaxRef.current - logMinRef.current) * (plotB - plotT);
       const revAtMonth   = m => rev0 * Math.pow(1 + growth, m);
       const expAtMonth   = m => exp0 * Math.pow(1 + expGrowth, m);
-      const nPts = 72;
-      const revPts = Array.from({ length: nPts + 1 }, (_, i) => { const m = i * nMonths / nPts; return `${convMonthToX(m).toFixed(1)},${convFlowToY(revAtMonth(m)).toFixed(1)}`; }).join(' ');
-      const expPts = Array.from({ length: nPts + 1 }, (_, i) => { const m = i * nMonths / nPts; return `${convMonthToX(m).toFixed(1)},${convFlowToY(expAtMonth(m)).toFixed(1)}`; }).join(' ');
-      const bxEnd = (breakevenMonth !== null && breakevenMonth > 0) ? Math.min(breakevenMonth, nMonths) : 0;
-      let capitalPath = '';
-      if (bxEnd > 0) {
+      const fmtM = v => v >= 1e6 ? '$'+Math.round(v/1e6)+'M' : v >= 1e4 ? '$'+(v/1e3).toFixed(0)+'k' : v >= 1e3 ? '$'+(v/1e3).toFixed(1)+'k' : '$'+Math.round(v);
+
+      // Y-axis ticks
+      const flowMin = Math.exp(logMinRef.current), flowMax = Math.exp(logMaxRef.current);
+      const yFlows = genFlowTicks(flowMin, flowMax);
+
+      // Revenue: straight line on log scale
+      const revD = `M ${convMonthToX(0).toFixed(1)} ${convFlowToY(rev0).toFixed(1)} L ${plotR} ${convFlowToY(revAtMonth(nMonths)).toFixed(1)}`;
+
+      // Expense line
+      let expD = `M ${convMonthToX(0).toFixed(1)} ${convFlowToY(exp0).toFixed(1)}`;
+      if (expGrowth > 0) {
+        for (let i = 1; i <= 60; i++) { const m = nMonths * i / 60; expD += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(expAtMonth(m)).toFixed(1)}`; }
+      } else { expD += ` L ${plotR} ${convFlowToY(exp0).toFixed(1)}`; }
+
+      // Capital zone
+      const endMo = (breakevenMonth !== null && breakevenMonth > 0) ? Math.min(breakevenMonth, nMonths) : 0;
+      let capD = '';
+      if (endMo > 0) {
         const steps = 60;
-        const top    = Array.from({ length: steps + 1 }, (_, i) => { const m = (i / steps) * bxEnd; return `${convMonthToX(m).toFixed(1)},${convFlowToY(revAtMonth(m)).toFixed(1)}`; });
-        const bottom = Array.from({ length: steps + 1 }, (_, i) => { const m = ((steps - i) / steps) * bxEnd; return `${convMonthToX(m).toFixed(1)},${convFlowToY(expAtMonth(m)).toFixed(1)}`; });
-        capitalPath = `M ${top.join(' L ')} L ${bottom.join(' L ')} Z`;
+        capD = `M ${convMonthToX(0).toFixed(1)} ${convFlowToY(rev0).toFixed(1)}`;
+        for (let i = 1; i <= steps; i++) { const m = endMo * i / steps; capD += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(revAtMonth(m)).toFixed(1)}`; }
+        for (let i = steps; i >= 0; i--) { const m = endMo * i / steps; capD += ` L ${convMonthToX(m).toFixed(1)} ${convFlowToY(expAtMonth(m)).toFixed(1)}`; }
+        capD += ' Z';
       }
+
+      const bxWithin = breakevenMonth !== null && breakevenMonth > 0 && breakevenMonth <= nMonths;
+
       return (
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
-          {capitalPath && <path d={capitalPath} fill="rgba(59,130,246,0.10)" />}
-          <polyline points={expPts} fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points={revPts} fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          {breakevenMonth !== null && breakevenMonth > 0 && breakevenMonth <= nMonths && (() => {
+          <defs>
+            <linearGradient id="mCapGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(210,245,255,0.9)" />
+              <stop offset="100%" stopColor="rgba(210,245,255,0.3)" />
+            </linearGradient>
+            <clipPath id="mChartClip">
+              <rect x={plotL} y={plotT} width={plotR - plotL} height={plotB - plotT} />
+            </clipPath>
+          </defs>
+
+          {/* Grid lines */}
+          {yFlows.map(flow => {
+            const y = convFlowToY(flow);
+            if (y < plotT + 4 || y > plotB - 4) return null;
+            return <line key={flow} x1={plotL} y1={y} x2={plotR} y2={y} stroke="#e5e7eb" strokeWidth="1" />;
+          })}
+
+          {/* Capital zone */}
+          {capD && <path d={capD} fill="url(#mCapGrad)" clipPath="url(#mChartClip)" />}
+
+          {/* Expense line */}
+          <path d={expD} stroke="#ff5252" strokeWidth="3" fill="none" strokeLinecap="round" clipPath="url(#mChartClip)" />
+
+          {/* Revenue line */}
+          <path d={revD} stroke="#ebff52" strokeWidth="3" fill="none" strokeLinecap="round" clipPath="url(#mChartClip)" />
+
+          {/* Axes */}
+          <line x1={plotL} y1={plotT} x2={plotL} y2={plotB} stroke="#ccc" strokeWidth="1" />
+          <line x1={plotL} y1={plotB} x2={plotR} y2={plotB} stroke="#ccc" strokeWidth="1" />
+
+          {/* Y-axis labels */}
+          {yFlows.map(flow => {
+            const y = convFlowToY(flow);
+            if (y < plotT + 4 || y > plotB - 4) return null;
+            return <text key={flow} x={plotL - 4} y={y} textAnchor="end" dominantBaseline="middle" fontSize="13" fontFamily={font} fill="#888">{fmtM(flow)}</text>;
+          })}
+
+          {/* X-axis labels */}
+          {[0,1,2,3].map(yr => {
+            const x = convMonthToX(yr * 12);
+            return (
+              <g key={yr}>
+                <line x1={x} y1={plotB} x2={x} y2={plotB + 5} stroke="#888" strokeWidth="1" />
+                <text x={x} y={plotB + 15} textAnchor="middle" dominantBaseline="top" fontSize="13" fontFamily={font} fill="#888">
+                  {yr === 0 ? 'today' : `year ${yr}`}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Breakeven dot */}
+          {bxWithin && (() => {
             const bx = convMonthToX(breakevenMonth), by = convFlowToY(revAtMonth(breakevenMonth));
             return <circle cx={bx} cy={by} r={6} fill="white" stroke="#111" strokeWidth="2" />;
           })()}
@@ -812,7 +878,7 @@
     // ─── Mobile view — verdict hero + sliders + simplified chart ─────────────────
     function MobileView({ rev0, exp0, growth, expGrowth, setRev0, setExp0, setGrowth, setExpGrowth,
         breakevenMonth, capitalNeeded, defaultAlive, milestoneMonths, MILESTONES,
-        fmtTimeLong, fmtRevenue, scrolled }) {
+        fmtTimeLong, fmtRevenue, scrolled, onToggle }) {
 
       const fmtMoney = v => {
         if (v >= 1e6) return '$' + Math.round(v / 1e6) + 'M';
@@ -880,43 +946,27 @@
       return (
         <div style={{ fontFamily: 'Artex, system-ui, sans-serif', backgroundColor: '#fff', paddingBottom: '220px' }}>
 
-          {/* ── Verdict hero ── */}
-          <div style={{ padding: '20px 16px 16px', background: verdictBg, borderBottom: `1px solid ${verdictBorder}` }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, color: verdictColor, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '6px' }}>
-              {verdictTag}
-            </div>
-            <div style={{ fontFamily: 'Feature Display, serif', fontSize: '28px', lineHeight: 1.1, color: '#111', marginBottom: subline ? '6px' : 0 }}>
-              {headline}
-            </div>
-            {subline && <div style={{ fontSize: '13px', color: '#6b7280' }}>{subline}</div>}
-          </div>
-
-          {/* ── Simplified chart ── */}
-          <div style={{ padding: '10px 12px 4px', borderBottom: '1px solid #f3f4f6' }}>
-            <MobileSimpleChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth} breakevenMonth={breakevenMonth} />
-          </div>
-
           {/* ── Sliders ── */}
           <div style={{ padding: '20px 16px 0' }}>
             <div style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
                 <span style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Monthly Revenue</span>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#16a34a', fontFamily: 'Feature Display, serif' }}>{fmtMoney(rev0)}</span>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#b8cc1a', fontFamily: 'Feature Display, serif' }}>{fmtMoney(rev0)}</span>
               </div>
-              <input type="range" className="m-slider s-green" min="0" max="1000"
+              <input type="range" className="m-slider s-rev" min="0" max="1000"
                 value={Math.round(logToSlider(rev0, REV_MIN, REV_MAX))}
                 onChange={e => setRev0(sliderToLog(Number(e.target.value), REV_MIN, REV_MAX))}
-                style={sliderBg(revFill, '#22c55e')} />
+                style={sliderBg(revFill, '#ebff52')} />
             </div>
             <div style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
                 <span style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Monthly Expenses</span>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#f97316', fontFamily: 'Feature Display, serif' }}>{fmtMoney(exp0)}</span>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#ff5252', fontFamily: 'Feature Display, serif' }}>{fmtMoney(exp0)}</span>
               </div>
-              <input type="range" className="m-slider s-orange" min="0" max="1000"
+              <input type="range" className="m-slider s-exp" min="0" max="1000"
                 value={Math.round(logToSlider(exp0, EXP_MIN, EXP_MAX))}
                 onChange={e => setExp0(sliderToLog(Number(e.target.value), EXP_MIN, EXP_MAX))}
-                style={sliderBg(expFill, '#f97316')} />
+                style={sliderBg(expFill, '#ff5252')} />
             </div>
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
@@ -928,10 +978,27 @@
                 onChange={e => setGrowth(Number(e.target.value) / 100)}
                 style={sliderBg(gFill, '#111827')} />
             </div>
-            <div style={{ textAlign: 'right', paddingTop: '8px', paddingBottom: '20px', borderBottom: '1px solid #f3f4f6' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', paddingBottom: '20px', borderBottom: '1px solid #f3f4f6' }}>
+              <a onClick={onToggle} style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>desktop</a>
               <a onClick={() => { setRev0(10000); setExp0(50000); setGrowth(0.10); setExpGrowth(0); }}
                 style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>reset</a>
             </div>
+          </div>
+
+          {/* ── Chart ── */}
+          <div style={{ padding: '10px 12px 4px', borderBottom: '1px solid #f3f4f6' }}>
+            <MobileSimpleChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth} breakevenMonth={breakevenMonth} />
+          </div>
+
+          {/* ── Answer ── */}
+          <div style={{ padding: '16px', background: verdictBg, borderBottom: `1px solid ${verdictBorder}` }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: verdictColor, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '6px' }}>
+              {verdictTag}
+            </div>
+            <div style={{ fontFamily: 'Feature Display, serif', fontSize: '24px', lineHeight: 1.1, color: '#111', marginBottom: subline ? '4px' : 0 }}>
+              {headline}
+            </div>
+            {subline && <div style={{ fontSize: '13px', color: '#6b7280' }}>{subline}</div>}
           </div>
 
           {/* ── Title + milestones ── */}
@@ -995,8 +1062,9 @@
       const [growth,    setGrowth]    = useState(defaults.g);
       const [expGrowth, setExpGrowth] = useState(defaults.eg);
       const [showExact, setShowExact] = useState(false);
-      const [scrolled,  setScrolled]  = useState(false);
-      const [isMobile,  setIsMobile]  = useState(() => window.innerWidth < 640);
+      const [scrolled,    setScrolled]    = useState(false);
+      const [isMobile,    setIsMobile]    = useState(() => window.innerWidth < 640);
+      const [useMobileUI, setUseMobileUI] = useState(false);
 
       useEffect(() => {
         const upd = () => setIsMobile(window.innerWidth < 640);
@@ -1005,7 +1073,10 @@
       }, []);
 
       useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 150);
+        const onScroll = () => {
+          const nearBottom = window.scrollY + window.innerHeight > document.documentElement.scrollHeight - 200;
+          setScrolled(nearBottom);
+        };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
       }, []);
@@ -1063,14 +1134,14 @@
         return Math.log(targetMonthly / rev0) / Math.log(1 + growth);
       });
 
-      if (isMobile) return (
+      if (isMobile && useMobileUI) return (
         <MobileView
           rev0={rev0} exp0={exp0} growth={growth} expGrowth={expGrowth}
           setRev0={setRev0} setExp0={setExp0} setGrowth={setGrowth} setExpGrowth={setExpGrowth}
           breakevenMonth={breakevenMonth} capitalNeeded={capitalNeeded} defaultAlive={defaultAlive}
           milestoneMonths={milestoneMonths} MILESTONES={MILESTONES}
           fmtTimeLong={fmtTimeLong} fmtRevenue={fmtRevenue}
-          scrolled={scrolled} />
+          scrolled={scrolled} onToggle={() => setUseMobileUI(false)} />
       );
 
       return (
@@ -1107,10 +1178,18 @@
                   style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
                   {showExact ? 'hide exact numbers' : 'enter exact numbers'}
                 </a>
-                <a onClick={() => { setRev0(10000); setExp0(50000); setGrowth(0.10); setExpGrowth(0); }}
-                  style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
-                  reset
-                </a>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {isMobile && (
+                    <a onClick={() => setUseMobileUI(true)}
+                      style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                      mobile
+                    </a>
+                  )}
+                  <a onClick={() => { setRev0(10000); setExp0(50000); setGrowth(0.10); setExpGrowth(0); }}
+                    style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                    reset
+                  </a>
+                </div>
               </div>
               {/* Drawer — slides open below */}
               {showExact && (() => {
