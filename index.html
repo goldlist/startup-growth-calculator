@@ -1139,25 +1139,32 @@
         return () => window.removeEventListener('scroll', onScroll);
       }, []);
 
+      // Debounced URL update — Safari caps history.replaceState at ~100/30s
       useEffect(() => {
-        const p = new URLSearchParams({ r: Math.round(rev0), e: Math.round(exp0), g: growth.toFixed(4), eg: expGrowth.toFixed(4) });
-        window.history.replaceState(null, '', '?' + p.toString());
+        const t = setTimeout(() => {
+          const p = new URLSearchParams({ r: Math.round(rev0), e: Math.round(exp0), g: growth.toFixed(4), eg: expGrowth.toFixed(4) });
+          window.history.replaceState(null, '', '?' + p.toString());
+        }, 800);
+        return () => clearTimeout(t);
       }, [rev0, exp0, growth, expGrowth]);
 
       const g = growth;
-      const breakevenMonth = rev0 >= exp0 ? 0
+      const breakevenMonth = useMemo(() => rev0 >= exp0 ? 0
         : (g > expGrowth)
           ? Math.log(exp0 / rev0) / Math.log((1 + g) / (1 + expGrowth))
-          : null;
+          : null
+      , [rev0, exp0, g, expGrowth]);
 
-      let capitalNeeded = 0;
-      if (breakevenMonth !== null && breakevenMonth > 0) {
-        const steps = 200;
+      const capitalNeeded = useMemo(() => {
+        if (breakevenMonth === null || breakevenMonth <= 0) return 0;
+        let total = 0;
+        const steps = 80;
         for (let i = 0; i < steps; i++) {
           const mo = (breakevenMonth / steps) * (i + 0.5);
-          capitalNeeded += Math.max(0, exp0 * Math.pow(1 + expGrowth, mo) - rev0 * Math.pow(1 + g, mo)) * (breakevenMonth / steps);
+          total += Math.max(0, exp0 * Math.pow(1 + expGrowth, mo) - rev0 * Math.pow(1 + g, mo)) * (breakevenMonth / steps);
         }
-      }
+        return total;
+      }, [breakevenMonth, rev0, exp0, g, expGrowth]);
 
       const defaultAlive = breakevenMonth !== null;
       const fmt = n => n >= 1e6 ? `$${Math.round(n/1e6)}M` : n >= 1000 ? `$${Math.round(n/1000)}k` : `$${Math.round(n)}`;
