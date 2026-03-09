@@ -1259,13 +1259,15 @@
           {/* ── Transitioning view ── */}
           <div className={`view-wrap${viewVisible ? '' : ' view-hidden'}`}>
           {useMobileUI ? (
-            <MobileView
-              rev0={rev0} exp0={exp0} growth={growth} expGrowth={expGrowth}
-              setRev0={setRev0} setExp0={setExp0} setGrowth={setGrowth} setExpGrowth={setExpGrowth}
-              breakevenMonth={breakevenMonth} capitalNeeded={capitalNeeded} defaultAlive={defaultAlive}
-              milestoneMonths={milestoneMonths} MILESTONES={MILESTONES}
-              fmtTimeLong={fmtTimeLong} fmtRevenue={fmtRevenue}
-              scrolled={scrolled} />
+            <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+              <MobileView
+                rev0={rev0} exp0={exp0} growth={growth} expGrowth={expGrowth}
+                setRev0={setRev0} setExp0={setExp0} setGrowth={setGrowth} setExpGrowth={setExpGrowth}
+                breakevenMonth={breakevenMonth} capitalNeeded={capitalNeeded} defaultAlive={defaultAlive}
+                milestoneMonths={milestoneMonths} MILESTONES={MILESTONES}
+                fmtTimeLong={fmtTimeLong} fmtRevenue={fmtRevenue}
+                scrolled={scrolled} />
+            </div>
           ) : (
           <>
           <main className="max-w-5xl mx-auto pt-2 pb-3" style={{ paddingBottom: '240px' }}>
