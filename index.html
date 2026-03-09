@@ -1533,25 +1533,31 @@
 
     // Mobile nav toggle (replaces webflow.js behaviour)
     (function () {
-      const btn  = document.querySelector('.w-nav-button');
-      const menu = document.querySelector('.w-nav-menu');
-      if (!btn || !menu) return;
+      const btn     = document.querySelector('.w-nav-button');
+      const wrapper = document.querySelector('.navbar2_button-wrapper');
+      const menu    = document.querySelector('.w-nav-menu');
+      if (!btn || !menu || !wrapper) return;
+
+      function open() {
+        btn.classList.add('w--open');
+        menu.setAttribute('data-nav-menu-open', '');
+        // Pull wrapper out of stacking context by making it fixed
+        const r = wrapper.getBoundingClientRect();
+        Object.assign(wrapper.style, {
+          position: 'fixed', top: r.top + 'px', right: (window.innerWidth - r.right) + 'px', zIndex: '99999999'
+        });
+      }
+      function close() {
+        btn.classList.remove('w--open');
+        menu.removeAttribute('data-nav-menu-open');
+        Object.assign(wrapper.style, { position: '', top: '', right: '', zIndex: '' });
+      }
+
       btn.addEventListener('click', function () {
-        const isOpen = btn.classList.contains('w--open');
-        if (isOpen) {
-          btn.classList.remove('w--open');
-          menu.removeAttribute('data-nav-menu-open');
-        } else {
-          btn.classList.add('w--open');
-          menu.setAttribute('data-nav-menu-open', '');
-        }
+        btn.classList.contains('w--open') ? close() : open();
       });
-      // Close on outside click
       document.addEventListener('click', function (e) {
-        if (!btn.contains(e.target) && !menu.contains(e.target)) {
-          btn.classList.remove('w--open');
-          menu.removeAttribute('data-nav-menu-open');
-        }
+        if (btn.classList.contains('w--open') && !btn.contains(e.target) && !menu.contains(e.target)) close();
       });
     })();
   </script>
