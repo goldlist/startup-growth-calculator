@@ -154,12 +154,14 @@
     }
 
     // ─── Mobile chart — same visual language as desktop, display-only ────────────
-    function MobileSimpleChart({ rev0, exp0, expGrowth, growth, breakevenMonth }) {
+    function MobileSimpleChart({ rev0, exp0, expGrowth, growth, breakevenMonth, onRev, onExp, onGrowth }) {
       const [, forceRender] = useState(0);
       const logMinRef = useRef(null);
       const logMaxRef = useRef(null);
       const rafRef    = useRef(null);
       const initialized = useRef(false);
+      const svgRef  = useRef(null);
+      const dragRef = useRef(null);
       if (!initialized.current) {
         initialized.current = true;
         const { lMin, lMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
@@ -192,6 +194,28 @@
       const expAtMonth   = m => exp0 * Math.pow(1 + expGrowth, m);
       const fmtM = v => v >= 1e6 ? '$'+Math.round(v/1e6)+'M' : v >= 1e4 ? '$'+(v/1e3).toFixed(0)+'k' : v >= 1e3 ? '$'+(v/1e3).toFixed(1)+'k' : '$'+Math.round(v);
 
+      // Drag helpers
+      const yToFlow = y => Math.exp(logMinRef.current + Math.max(0, Math.min(1, (plotB - y) / (plotB - plotT))) * (logMaxRef.current - logMinRef.current));
+      const getSvgY = e => {
+        const el = svgRef.current; if (!el) return plotB;
+        const rect = el.getBoundingClientRect();
+        const src = e.touches ? e.touches[0] : e;
+        return (src.clientY - rect.top) * (H / rect.height);
+      };
+      const onDragStart = (handle, e) => { e.preventDefault(); e.stopPropagation(); dragRef.current = handle; };
+      const onDragMove  = e => {
+        if (!dragRef.current) return;
+        e.preventDefault();
+        const v = Math.max(500, Math.min(2000000, yToFlow(getSvgY(e))));
+        if (dragRef.current === 'rev' && onRev) onRev(v);
+        else if (dragRef.current === 'exp' && onExp) onExp(v);
+        else if (dragRef.current === 'growth' && onGrowth) {
+          const g = Math.pow(v / Math.max(rev0, 1), 1 / nMonths) - 1;
+          onGrowth(Math.max(0.01, Math.min(0.70, g)));
+        }
+      };
+      const onDragEnd = () => { dragRef.current = null; };
+
       // Y-axis ticks
       const flowMin = Math.exp(logMinRef.current), flowMax = Math.exp(logMaxRef.current);
       const yFlows = genFlowTicks(flowMin, flowMax);
@@ -219,7 +243,9 @@
       const bxWithin = breakevenMonth !== null && breakevenMonth > 0 && breakevenMonth <= nMonths;
 
       return (
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block', touchAction: 'none' }}
+          onMouseMove={onDragMove} onMouseUp={onDragEnd} onMouseLeave={onDragEnd}
+          onTouchMove={onDragMove} onTouchEnd={onDragEnd} onTouchCancel={onDragEnd}>
           <defs>
             <linearGradient id="mCapGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(210,245,255,0.9)" />
@@ -271,10 +297,52 @@
             );
           })}
 
-          {/* Breakeven dot */}
+          {/* Revenue start handle */}
+          {(() => {
+            const cx = plotL, cy = convFlowToY(rev0);
+            return (
+              <g onMouseDown={e => onDragStart('rev', e)} onTouchStart={e => onDragStart('rev', e)} style={{ cursor: 'ns-resize' }}>
+                <circle cx={cx} cy={cy} r={22} fill="transparent" />
+                <circle cx={cx} cy={cy} r={9} fill="#b8cc1a" stroke="white" strokeWidth="2.5" />
+                <circle cx={cx} cy={cy} r={9} fill="none" stroke="#b8cc1a" strokeWidth="1.5" className="handle-ripple" style={{ '--r0': '9px', '--r1': '22px' }} />
+              </g>
+            );
+          })()}
+
+          {/* Expense start handle */}
+          {(() => {
+            const cx = plotL, cy = convFlowToY(exp0);
+            return (
+              <g onMouseDown={e => onDragStart('exp', e)} onTouchStart={e => onDragStart('exp', e)} style={{ cursor: 'ns-resize' }}>
+                <circle cx={cx} cy={cy} r={22} fill="transparent" />
+                <circle cx={cx} cy={cy} r={9} fill="#ff5252" stroke="white" strokeWidth="2.5" />
+                <circle cx={cx} cy={cy} r={9} fill="none" stroke="#ff5252" strokeWidth="1.5" className="handle-ripple" style={{ '--r0': '9px', '--r1': '22px' }} />
+              </g>
+            );
+          })()}
+
+          {/* Growth handle (right end of revenue line) */}
+          {(() => {
+            const cx = plotR, cy = convFlowToY(revAtMonth(nMonths));
+            return (
+              <g onMouseDown={e => onDragStart('growth', e)} onTouchStart={e => onDragStart('growth', e)} style={{ cursor: 'ns-resize' }}>
+                <circle cx={cx} cy={cy} r={22} fill="transparent" />
+                <circle cx={cx} cy={cy} r={9} fill="#b8cc1a" stroke="white" strokeWidth="2.5" />
+                <circle cx={cx} cy={cy} r={9} fill="none" stroke="#b8cc1a" strokeWidth="1.5" className="handle-ripple" style={{ '--r0': '9px', '--r1': '22px' }} />
+              </g>
+            );
+          })()}
+
+          {/* Breakeven marker — diamond, not draggable */}
           {bxWithin && (() => {
             const bx = convMonthToX(breakevenMonth), by = convFlowToY(revAtMonth(breakevenMonth));
-            return <circle cx={bx} cy={by} r={6} fill="white" stroke="#111" strokeWidth="2" />;
+            const s = 7;
+            return (
+              <g style={{ pointerEvents: 'none' }}>
+                <polygon points={`${bx},${by-s} ${bx+s},${by} ${bx},${by+s} ${bx-s},${by}`}
+                  fill="white" stroke="#111" strokeWidth="1.5" />
+              </g>
+            );
           })()}
         </svg>
       );
@@ -918,20 +986,43 @@
       const sliderBg = (pct, color) => ({ background: `linear-gradient(to right, ${color} ${pct.toFixed(1)}%, #e5e7eb ${pct.toFixed(1)}%)` });
 
       const alreadyProfitable = rev0 >= exp0;
-      const verdictColor  = defaultAlive ? '#16a34a' : '#dc2626';
-      const verdictBg     = defaultAlive ? '#f0fdf4' : '#fef2f2';
-      const verdictBorder = defaultAlive ? '#bbf7d0' : '#fecaca';
-      const verdictTag    = defaultAlive ? 'Default Alive' : 'Default Dead';
+      const neverBreakeven = breakevenMonth === null;
+      const fmtCap = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${Math.round(v/1000)}k`;
+
+      let verdictLevel;
+      if (alreadyProfitable) {
+        verdictLevel = 'green';
+      } else if (neverBreakeven || breakevenMonth > 48 || capitalNeeded > 5_000_000) {
+        verdictLevel = 'red';
+      } else if (breakevenMonth <= 24 && capitalNeeded <= 750_000) {
+        verdictLevel = 'green';
+      } else {
+        verdictLevel = 'yellow';
+      }
+
+      const verdictColor  = verdictLevel === 'green' ? '#16a34a' : verdictLevel === 'yellow' ? '#b45309' : '#dc2626';
+      const verdictBg     = verdictLevel === 'green' ? '#f0fdf4' : verdictLevel === 'yellow' ? '#fffbeb' : '#fef2f2';
+      const verdictBorder = verdictLevel === 'green' ? '#bbf7d0' : verdictLevel === 'yellow' ? '#fde68a' : '#fecaca';
+      const verdictTag    = verdictLevel === 'green'
+        ? (alreadyProfitable ? 'Profitable' : 'Default Alive')
+        : verdictLevel === 'yellow' ? 'Needs Runway' : (neverBreakeven ? 'Default Dead' : 'Danger Zone');
+
       let headline = '', subline = '';
       if (alreadyProfitable) {
         headline = 'Already profitable';
         subline  = `Growing at ${Math.round(growth * 100)}% per month`;
-      } else if (defaultAlive && breakevenMonth > 0) {
-        headline = `Profitable in ${Math.ceil(breakevenMonth)} months`;
-        subline  = capitalNeeded > 0 ? `${fmtMoney(capitalNeeded)} capital needed` : '';
-      } else {
+      } else if (neverBreakeven) {
         headline = "Revenue won't catch expenses";
-        subline  = 'Raise growth rate or cut expenses';
+        subline  = 'Raise growth rate or cut costs';
+      } else if (verdictLevel === 'green') {
+        headline = `Profitable in ${Math.ceil(breakevenMonth)} months`;
+        subline  = capitalNeeded > 0 ? `${fmtCap(capitalNeeded)} capital needed` : '';
+      } else if (verdictLevel === 'yellow') {
+        headline = `${Math.ceil(breakevenMonth)} months to profitability`;
+        subline  = `${fmtCap(capitalNeeded)} runway needed — consider raising`;
+      } else {
+        headline = breakevenMonth > 48 ? `${Math.ceil(breakevenMonth)} months to break even` : "Revenue can't catch expenses";
+        subline  = breakevenMonth > 48 ? `${fmtCap(capitalNeeded)} needed — requires major raise` : 'Cut costs or dramatically raise growth rate';
       }
 
       const pct     = Math.round(growth * 100);
@@ -944,7 +1035,8 @@
 
           {/* ── Chart ── */}
           <div style={{ padding: '10px 0 4px', borderBottom: '1px solid #f3f4f6' }}>
-            <MobileSimpleChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth} breakevenMonth={breakevenMonth} />
+            <MobileSimpleChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth} breakevenMonth={breakevenMonth}
+              onRev={setRev0} onExp={setExp0} onGrowth={setGrowth} />
           </div>
 
           {/* ── Sliders ── */}
