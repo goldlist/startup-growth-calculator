@@ -298,6 +298,12 @@
         return Math.round(v / mag) * mag;
       };
 
+      // Snap growth rate to nearest arc label if within ~1% of it
+      const snapToRate = rawG => {
+        const nearest = monthlyRates.reduce((a, b) => Math.abs(b - rawG) < Math.abs(a - rawG) ? b : a);
+        return Math.abs(nearest - rawG) < 0.012 ? nearest : rawG;
+      };
+
       // Drag handlers — Trevor's exact logic: convXToWeek(dragX) + convYToFlow(dragY)
       function startDrag(which) {
         return e => {
@@ -321,7 +327,7 @@
               if (dragMonth > 0.5) {
                 const dragRev = clamp(convYToFlow(sy));
                 const rawG = Math.exp(Math.log(dragRev / rev0) / dragMonth) - 1;
-                onGrowth(Math.max(0, Math.min(Math.round(rawG * 100) / 100, 0.70)));
+                onGrowth(Math.max(0, Math.min(snapToRate(rawG), 0.70)));
               }
             }
           };
@@ -354,8 +360,18 @@
 
       // Tight-lines detection — when rev and exp handles are too close to label inline
       const expY0 = convFlowToY(exp0);
-      // Only trigger legend when lines are truly within one label-height of each other
-      const tightLines = Math.abs(p0Y - expY0) < fsAnnot * 1.8;
+      // earlyTight: slanted revenue label goes to legend first
+      const earlyTight = Math.abs(p0Y - expY0) < fsAnnot * 9;
+      // tightLines: horizontal expense label goes to legend too
+      const tightLines = Math.abs(p0Y - expY0) < fsAnnot * 5;
+      // growthLabelTight: "growing X%" label hides when lines are close at its own position
+      const growLabelMonth = protMonth + 2;
+      const growthLabelTight = Math.abs(convFlowToY(revAtMonth(growLabelMonth)) - convFlowToY(expAtMonth(growLabelMonth))) < fsAnnot * 5;
+      // Tight-cap detection — when the capital zone is too narrow to fit the inline label
+      const capGapAtLabel = (rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && capitalNeeded > 0)
+        ? convFlowToY(revAtMonth(lbMonth)) - convFlowToY(expAtMonth(lbMonth))
+        : Infinity;
+      const tightCap = capGapAtLabel < fsCapLabel * 3;
 
       // $100M milestone geometry
       const ipoWithin = ipoMonth !== null && ipoMonth > 0 && ipoMonth <= nMonths;
@@ -398,14 +414,10 @@
           })()}
 
           {/* ── Capital needed label (wide-gap, desktop only) ── */}
-          {!tightLines && !isMobile && rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (() => {
+          {!earlyTight && !isMobile && !tightCap && rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && (() => {
             const label = `${fmtMoney(capitalNeeded)} capital needed`;
-            const textW = label.length * fsCapLabel * 0.58 + 8;
-            const textH = fsCapLabel * 1.4;
             return (
               <g style={{ pointerEvents: 'none' }}>
-                <rect x={lbX - 4} y={lbY - textH / 2} width={textW} height={textH}
-                  fill="white" fillOpacity="0.85" rx="3" />
                 <text x={lbX} y={lbY} fontSize={fsCapLabel} fontFamily={font} fontWeight="bold"
                   fill="#000" dominantBaseline="middle">
                   {label}
@@ -477,8 +489,8 @@
             return <path d={d} stroke="#ff5252" strokeWidth="3" fill="none" clipPath="url(#chartClip)" />;
           })()}
 
-          {/* ── Revenue start label — desktop only; mobile uses legend ── */}
-          {!tightLines && !isMobile && (() => {
+          {/* ── Revenue start label — desktop only; goes to legend when earlyTight ── */}
+          {!earlyTight && !isMobile && (() => {
             const angle = Math.atan2(p1Y - p0Y, p1X - p0X) * 180 / Math.PI;
             return (
               <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
@@ -489,20 +501,27 @@
             );
           })()}
 
-          {/* ── Growth rate label — desktop only; mobile uses legend ── */}
-          {!isMobile && (() => {
-            const angle = Math.atan2(p1Y - p0Y, p1X - p0X) * 180 / Math.PI;
+          {/* ── Growth rate label — desktop only; goes to legend when growthLabelTight ── */}
+          {!growthLabelTight && !isMobile && (() => {
             const pct = Math.round(g * 100);
+            // Position label just past the arc handle, clear of the protractor numbers
+            const lMonth = protMonth + 2;
+            const lX = convMonthToX(lMonth);
+            const lY = convFlowToY(revAtMonth(lMonth));
+            const localAngle = Math.atan2(
+              convFlowToY(revAtMonth(lMonth + 1)) - convFlowToY(revAtMonth(lMonth - 1)),
+              convMonthToX(lMonth + 1) - convMonthToX(lMonth - 1)
+            ) * 180 / Math.PI;
             return (
-              <text transform={`rotate(${angle.toFixed(1)}, ${p0X.toFixed(1)}, ${p0Y.toFixed(1)})`}
-                x={p0X + protRad + 15} y={p0Y - 7}
+              <text transform={`rotate(${localAngle.toFixed(1)}, ${lX.toFixed(1)}, ${lY.toFixed(1)})`}
+                x={lX} y={lY - 8}
                 textAnchor="start" fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
-                {isMobile ? `${pct}% / mo` : `growing ${pct}% monthly`}
+                growing {pct}% monthly
               </text>
             );
           })()}
 
-          {/* ── Expense label — desktop only; mobile uses legend ── */}
+          {/* ── Expense label — desktop only; goes to legend when tightLines ── */}
           {!tightLines && !isMobile && (
             <text x={p0X + 15} y={expY - 7}
               fontSize={fsAnnot} fontFamily={font} fontWeight="bold" fill="#000">
@@ -510,25 +529,31 @@
             </text>
           )}
 
-          {/* ── Legend: always on mobile, only when tightLines on desktop ── */}
-          {(tightLines || isMobile) && (() => {
+          {/* ── Legend: always on mobile, slanted labels when earlyTight, expense when tightLines, capital when tightCap ── */}
+          {(earlyTight || isMobile || tightCap) && (() => {
             const pct = Math.round(g * 100);
             const lines = [
-              { text: `${fmtMoney(rev0)} revenue / mo`, dot: '#ebff52', stroke: '#b8cc1a' },
-              { text: `${fmtMoney(exp0)} expenses / mo`, dot: '#ff5252', stroke: '#cc1a1a' },
+              ...(earlyTight || isMobile ? [
+                { text: `${fmtMoney(rev0)} revenue / mo`, dot: '#ebff52', stroke: '#b8cc1a' },
+              ] : []),
+              ...(tightLines || isMobile ? [
+                { text: `${fmtMoney(exp0)} expenses / mo`, dot: '#ff5252', stroke: '#cc1a1a' },
+              ] : []),
               ...(isMobile ? [{ text: `${pct}% / mo growth`, dot: '#555', stroke: '#333' }] : []),
               ...(rev0 < exp0 && breakevenMonth !== null && breakevenMonth > 0 && capitalNeeded > 0
                 ? [{ text: `${fmtMoney(capitalNeeded)} capital needed`, dot: '#d2f5ff', stroke: '#aac8d8' }]
                 : []),
             ];
+            if (lines.length === 0) return null;
             const lineH = fsAnnot + 7;
             const pad = 9;
             const maxW = Math.max(...lines.map(l => l.text.length)) * fsAnnot * 0.54 + pad * 2 + 14;
             const boxH = lines.length * lineH + pad * 1.5;
             // Mobile: anchor to bottom-right, away from protractor arc in top-left
-            // Desktop: top-left (original position)
+            // Desktop: just above whichever line is highest at the left edge
             const bx = isMobile ? plotR - maxW - 10 : plotL + 10;
-            const by = isMobile ? plotB - boxH - 16 : plotT + 10;
+            const topLineY = Math.min(p0Y, expY0);
+            const by = isMobile ? plotB - boxH - 16 : Math.max(plotT + 4, topLineY - boxH - 28);
             return (
               <g style={{ pointerEvents: 'none' }}>
                 <rect x={bx} y={by} width={maxW} height={boxH}
@@ -571,7 +596,8 @@
                 <g>
                   <line x1={bx} y1={convFlowToY(exp0)} x2={bx} y2={ly} stroke="#888" strokeWidth="1" />
                   <text x={flipLeft ? bx - 3 : bx + 3} y={ly + 2}
-                    textAnchor={flipLeft ? 'end' : 'start'} fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="top">
+                    textAnchor={flipLeft ? 'end' : 'start'} fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="top"
+                    stroke="white" strokeWidth="4" paintOrder="stroke">
                     {label}
                   </text>
                 </g>
@@ -582,7 +608,8 @@
                 <g>
                   <path d={`M ${plotR} ${py} L ${plotR-20} ${py} M ${plotR} ${py} L ${plotR-8} ${py-3} M ${plotR} ${py} L ${plotR-8} ${py+3}`}
                     stroke="#888" strokeWidth="1" fill="none" />
-                  <text x={plotR-25} y={py} textAnchor="end" fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="middle">
+                  <text x={plotR-25} y={py} textAnchor="end" fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="middle"
+                    stroke="white" strokeWidth="4" paintOrder="stroke">
                     {label}
                   </text>
                 </g>
@@ -606,7 +633,8 @@
                     <line x1={lineX} y1={plotT + 20} x2={lineX} y2={plotT + 4} stroke="#888" strokeWidth="1" />
                     <line x1={lineX} y1={plotT + 4} x2={lineX - 4} y2={plotT + 10} stroke="#888" strokeWidth="1" />
                     <line x1={lineX} y1={plotT + 4} x2={lineX + 4} y2={plotT + 10} stroke="#888" strokeWidth="1" />
-                    <text x={lineX + 8} y={plotT + 14} textAnchor="start" fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="middle">
+                    <text x={lineX + 8} y={plotT + 14} textAnchor="start" fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="middle"
+                      stroke="white" strokeWidth="4" paintOrder="stroke">
                       {label}
                     </text>
                   </>
@@ -619,7 +647,8 @@
                         <line x1={lineX} y1={lineY} x2={lineX-8} y2={lineY+3} stroke="#888" strokeWidth="1" />
                       </>
                     )}
-                    <text x={p1lx - 5} y={lineY} textAnchor="end" fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="middle">
+                    <text x={p1lx - 5} y={lineY} textAnchor="end" fontSize={fsAnnot} fontFamily={font} fill="#000" dominantBaseline="middle"
+                      stroke="white" strokeWidth="4" paintOrder="stroke">
                       {label}
                     </text>
                   </>
@@ -731,7 +760,6 @@
       const [exp0,      setExp0]      = useState(defaults.exp);
       const [growth,    setGrowth]    = useState(defaults.g);
       const [expGrowth, setExpGrowth] = useState(defaults.eg);
-      const [copied,    setCopied]    = useState(false);
       const [showExact, setShowExact] = useState(false);
 
       useEffect(() => {
@@ -757,11 +785,7 @@
       const defaultAlive = breakevenMonth !== null;
       const fmt = n => n >= 1e6 ? `$${Math.round(n/1e6)}M` : n >= 1000 ? `$${Math.round(n/1000)}k` : `$${Math.round(n)}`;
 
-      function copyLink() {
-        navigator.clipboard.writeText(window.location.href);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
+
 
       // Milestones data
       const MILESTONES = [
@@ -800,7 +824,7 @@
                 Startup Growth Calculator
               </h1>
               <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
-                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for Canadian founders by TechTO.
+                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
               </p>
             </div>
 
@@ -818,11 +842,19 @@
             </div>
 
             {/* Exact number entry — aligned with y-axis on desktop */}
-            <div className="exact-numbers-wrap" style={{ marginTop: '12px' }}>
-              <a onClick={() => setShowExact(s => !s)}
-                style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
-                {showExact ? 'hide exact numbers' : 'enter exact numbers'}
-              </a>
+            <div className="exact-numbers-wrap" style={{ marginTop: '0px' }}>
+              {/* Top row: toggle left, reset right — always stable */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingRight: 'calc(20 / 900 * 100%)' }}>
+                <a onClick={() => setShowExact(s => !s)}
+                  style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                  {showExact ? 'hide exact numbers' : 'enter exact numbers'}
+                </a>
+                <a onClick={() => { setRev0(10000); setExp0(25000); setGrowth(0.10); setExpGrowth(0); }}
+                  style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                  reset
+                </a>
+              </div>
+              {/* Drawer — slides open below */}
               {showExact && (() => {
                 const parseMoney = s => {
                   s = s.replace(/[$,\s]/g, '').toLowerCase();
@@ -832,39 +864,58 @@
                 };
                 const fieldStyle = { width: '120px', fontSize: '16px', padding: '3px 6px', border: '1px solid #e5e7eb', borderRadius: '5px', textAlign: 'right', fontFamily: 'Artex, sans-serif', outline: 'none' };
                 const labelStyle = { fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '2px' };
+                const adornStyle = { position: 'absolute', top: '50%', transform: 'translateY(-50%)', fontSize: '16px', color: '#374151', pointerEvents: 'none', fontFamily: 'Artex, sans-serif' };
+                const fmtNum = n => Math.round(n).toLocaleString('en-CA');
+                const filterNum = e => { e.target.value = e.target.value.replace(/[^0-9.]/g, ''); };
                 return (
-                  <div style={{ display: 'flex', gap: '16px', marginTop: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '8px', alignItems: 'flex-end', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
                     <div>
                       <span style={labelStyle}>Revenue per month</span>
-                      <input key={'r'+rev0} type="text" defaultValue={Math.round(rev0)}
-                        onFocus={e => { e.target.select(); }}
-                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setRev0(v); else e.target.value = Math.round(rev0); }}
-                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-                        style={fieldStyle} />
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <span style={{ ...adornStyle, left: '6px' }}>$</span>
+                        <input key={'r'+rev0} type="text" defaultValue={fmtNum(rev0)}
+                          onFocus={e => { e.target.select(); }}
+                          onChange={filterNum}
+                          onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setRev0(v); else e.target.value = fmtNum(rev0); }}
+                          onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                          style={{ ...fieldStyle, paddingLeft: '18px' }} />
+                      </div>
                     </div>
                     <div>
                       <span style={labelStyle}>Expenses per month</span>
-                      <input key={'e'+exp0} type="text" defaultValue={Math.round(exp0)}
-                        onFocus={e => { e.target.select(); }}
-                        onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setExp0(v); else e.target.value = Math.round(exp0); }}
-                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-                        style={fieldStyle} />
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <span style={{ ...adornStyle, left: '6px' }}>$</span>
+                        <input key={'e'+exp0} type="text" defaultValue={fmtNum(exp0)}
+                          onFocus={e => { e.target.select(); }}
+                          onChange={filterNum}
+                          onBlur={e => { const v = parseMoney(e.target.value); if (!isNaN(v) && v > 0) setExp0(v); else e.target.value = fmtNum(exp0); }}
+                          onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                          style={{ ...fieldStyle, paddingLeft: '18px' }} />
+                      </div>
                     </div>
                     <div>
                       <span style={labelStyle}>Expense growth per month</span>
-                      <input key={'eg'+expGrowth} type="text" defaultValue={Math.round(expGrowth * 100) + '%'}
-                        onFocus={e => { e.target.select(); }}
-                        onBlur={e => { const v = parseFloat(e.target.value.replace(/%/g, '')); if (!isNaN(v) && v >= 0) setExpGrowth(Math.min(v / 100, 0.50)); else e.target.value = Math.round(expGrowth * 100) + '%'; }}
-                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-                        style={fieldStyle} />
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <input key={'eg'+expGrowth} type="text" defaultValue={Math.round(expGrowth * 100)}
+                          onFocus={e => { e.target.select(); }}
+                          onChange={filterNum}
+                          onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) setExpGrowth(Math.min(v / 100, 0.50)); else e.target.value = Math.round(expGrowth * 100); }}
+                          onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                          style={{ ...fieldStyle, paddingRight: '22px' }} />
+                        <span style={{ ...adornStyle, right: '6px' }}>%</span>
+                      </div>
                     </div>
                     <div>
                       <span style={labelStyle}>Revenue growth per month</span>
-                      <input key={'g'+growth} type="text" defaultValue={Math.round(growth * 100) + '%'}
-                        onFocus={e => { e.target.select(); }}
-                        onBlur={e => { const v = parseFloat(e.target.value.replace(/%/g, '')); if (!isNaN(v) && v >= 0) setGrowth(Math.min(v / 100, 0.70)); else e.target.value = Math.round(growth * 100) + '%'; }}
-                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-                        style={fieldStyle} />
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <input key={'g'+growth} type="text" defaultValue={Math.round(growth * 100)}
+                          onFocus={e => { e.target.select(); }}
+                          onChange={filterNum}
+                          onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) setGrowth(Math.min(v / 100, 0.70)); else e.target.value = Math.round(growth * 100); }}
+                          onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                          style={{ ...fieldStyle, paddingRight: '22px' }} />
+                        <span style={{ ...adornStyle, right: '6px' }}>%</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -980,15 +1031,6 @@
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px', marginBottom: '20px' }}>
-              <button onClick={copyLink} className="button w-button">
-                {copied ? '✓ Copied!' : 'Copy Link'}
-              </button>
-              <a onClick={() => { setRev0(10000); setExp0(25000); setGrowth(0.10); setExpGrowth(0); }}
-                style={{ fontSize: '12px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
-                Reset
-              </a>
-            </div>
             </div>{/* end px-4 wrapper */}
 
           </main>
