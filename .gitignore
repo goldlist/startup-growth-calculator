@@ -1,7 +1,5 @@
 .DS_Store
-/css/
+node_modules/
 webflow-export/images/
 webflow-export/documents/
 webflow-export/*.html
-techto-brand/*.png
-techto-brand/*.svg
