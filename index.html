@@ -66,6 +66,9 @@
       100% { r: var(--r1); opacity: 0; }
     }
     .handle-ripple { animation: handlePulse 2.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    /* ── View transition ── */
+    .view-wrap { transition: opacity 0.22s ease, transform 0.22s ease; }
+    .view-wrap.view-hidden { opacity: 0; transform: scale(0.98); pointer-events: none; }
   </style>
   <script>
     let vh = window.innerHeight * 0.01;
@@ -1088,6 +1091,12 @@
       const [scrolled,    setScrolled]    = useState(false);
       const [isMobile,    setIsMobile]    = useState(() => window.innerWidth < 640);
       const [useMobileUI, setUseMobileUI] = useState(false);
+      const [viewVisible, setViewVisible] = useState(true);
+
+      const switchView = (toMobile) => {
+        setViewVisible(false);
+        setTimeout(() => { setUseMobileUI(toMobile); setViewVisible(true); }, 240);
+      };
 
       useEffect(() => {
         const upd = () => setIsMobile(window.innerWidth < 640);
@@ -1157,17 +1166,20 @@
         return Math.log(targetMonthly / rev0) / Math.log(1 + growth);
       });
 
-      if (isMobile && useMobileUI) return (
-        <MobileView
-          rev0={rev0} exp0={exp0} growth={growth} expGrowth={expGrowth}
-          setRev0={setRev0} setExp0={setExp0} setGrowth={setGrowth} setExpGrowth={setExpGrowth}
-          breakevenMonth={breakevenMonth} capitalNeeded={capitalNeeded} defaultAlive={defaultAlive}
-          milestoneMonths={milestoneMonths} MILESTONES={MILESTONES}
-          fmtTimeLong={fmtTimeLong} fmtRevenue={fmtRevenue}
-          scrolled={scrolled} onToggle={() => setUseMobileUI(false)} />
+      if (useMobileUI) return (
+        <div className={`view-wrap${viewVisible ? '' : ' view-hidden'}`}>
+          <MobileView
+            rev0={rev0} exp0={exp0} growth={growth} expGrowth={expGrowth}
+            setRev0={setRev0} setExp0={setExp0} setGrowth={setGrowth} setExpGrowth={setExpGrowth}
+            breakevenMonth={breakevenMonth} capitalNeeded={capitalNeeded} defaultAlive={defaultAlive}
+            milestoneMonths={milestoneMonths} MILESTONES={MILESTONES}
+            fmtTimeLong={fmtTimeLong} fmtRevenue={fmtRevenue}
+            scrolled={scrolled} onToggle={() => switchView(false)} />
+        </div>
       );
 
       return (
+        <div className={`view-wrap${viewVisible ? '' : ' view-hidden'}`}>
         <div style={{ backgroundColor: '#fff', fontFamily: 'Artex, system-ui, sans-serif' }}>
           <main className="max-w-5xl mx-auto pt-2 pb-3" style={{ paddingBottom: '240px' }}>
 
@@ -1202,7 +1214,7 @@
                   {showExact ? 'hide exact numbers' : 'enter exact numbers'}
                 </a>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <a onClick={() => setUseMobileUI(true)}
+                  <a onClick={() => switchView(true)}
                     style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
                     mobile
                   </a>
@@ -1423,6 +1435,7 @@
             }} />
           </div>
         </div>
+        </div>{/* end view-wrap */}
       );
     }
 
