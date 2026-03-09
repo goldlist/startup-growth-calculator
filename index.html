@@ -1201,7 +1201,7 @@
 
       // Milestones data
       const MILESTONES = [
-        { name: 'Wealthsimple', arr: 265_000_000, logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcDAp_72xcznmkFbk2lOe3KIvPlnRD_1SdiA&s' },
+        { name: 'Wealthsimple', arr: 500_000_000, arrLabel: '~$500M run rate', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcDAp_72xcznmkFbk2lOe3KIvPlnRD_1SdiA&s' },
         { name: 'Shopify', arr: 8_900_000_000, logo: 'https://cdn.simpleicons.org/shopify' },
         { name: 'Stripe', arr: 15_000_000_000, logo: 'https://cdn.simpleicons.org/stripe' },
         { name: 'Apple', arr: 391_000_000_000, logo: 'https://cdn.simpleicons.org/apple' },
@@ -1451,7 +1451,7 @@
                       <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', lineHeight: 1.2 }}>
                         {m.name}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{fmtRevenue(m.arr)}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{m.arrLabel || fmtRevenue(m.arr)}</div>
                       <div style={{
                         marginTop: '10px',
                         fontSize: '18px',
