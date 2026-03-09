@@ -59,6 +59,13 @@
     .m-slider::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #111827; cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
     .m-slider.s-rev::-webkit-slider-thumb,  .m-slider.s-rev::-moz-range-thumb  { background: #b8cc1a; }
     .m-slider.s-exp::-webkit-slider-thumb,  .m-slider.s-exp::-moz-range-thumb  { background: #ff5252; }
+    /* ── Drag handle idle animation ── */
+    @keyframes handlePulse {
+      0%   { r: var(--r0); opacity: 1; }
+      60%  { r: var(--r1); opacity: 0; }
+      100% { r: var(--r1); opacity: 0; }
+    }
+    .handle-ripple { animation: handlePulse 2.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
   </style>
   <script>
     let vh = window.innerHeight * 0.01;
@@ -791,6 +798,10 @@
           <circle cx={p0X} cy={p0Y} r={hitRad} fill="transparent"
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('rev')} onTouchStart={startDrag('rev')} />
+          <circle cx={p0X} cy={p0Y} r={dragRad} fill="none" stroke="#b8cc1a" strokeWidth={2} style={{ pointerEvents: 'none' }}>
+            <animate attributeName="r" from={dragRad} to={dragRad * 3} dur="2.2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" from="1" to="0" dur="2.2s" repeatCount="indefinite" />
+          </circle>
           <circle cx={p0X} cy={p0Y} r={dragRad} fill="#ebff52" stroke="#b8cc1a" strokeWidth={dragRad/4} style={{ pointerEvents: 'none' }} />
           <circle cx={p0X} cy={p0Y} r={dragRad * 0.25} fill="#f5ffaa" style={{ pointerEvents: 'none' }} />
 
@@ -798,12 +809,20 @@
           <circle cx={pmX} cy={pmY} r={hitRad} fill="transparent"
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('growth')} onTouchStart={startDrag('growth')} />
+          <circle cx={pmX} cy={pmY} r={dragRad + 2} fill="none" stroke="#b8cc1a" strokeWidth={2} style={{ pointerEvents: 'none' }}>
+            <animate attributeName="r" from={dragRad + 2} to={(dragRad + 2) * 3} dur="2.2s" begin="0.7s" repeatCount="indefinite" />
+            <animate attributeName="opacity" from="1" to="0" dur="2.2s" begin="0.7s" repeatCount="indefinite" />
+          </circle>
           <circle cx={pmX} cy={pmY} r={dragRad + 2} fill="#ebff52" stroke="#b8cc1a" strokeWidth={2} style={{ pointerEvents: 'none' }} />
 
           {/* Expense handle */}
           <circle cx={p0X} cy={expY} r={hitRad} fill="transparent"
             style={{ cursor: 'ns-resize' }}
             onMouseDown={startDrag('exp')} onTouchStart={startDrag('exp')} />
+          <circle cx={p0X} cy={expY} r={dragRad} fill="none" stroke="#cc1a1a" strokeWidth={2} style={{ pointerEvents: 'none' }}>
+            <animate attributeName="r" from={dragRad} to={dragRad * 3} dur="2.2s" begin="1.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" from="1" to="0" dur="2.2s" begin="1.4s" repeatCount="indefinite" />
+          </circle>
           <circle cx={p0X} cy={expY} r={dragRad} fill="#ff5252" stroke="#cc1a1a" strokeWidth={dragRad/4} style={{ pointerEvents: 'none' }} />
           <circle cx={p0X} cy={expY} r={dragRad * 0.25} fill="#ff9090" style={{ pointerEvents: 'none' }} />
 
@@ -950,7 +969,7 @@
           <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f3f4f6' }}>
             <h1 style={{ fontFamily: 'Feature Display, serif', fontSize: '22px', fontWeight: 'normal', margin: '0 0 4px 0', lineHeight: 1.1 }}>Startup Growth Calculator</h1>
             <p style={{ fontSize: '11px', color: '#9ca3af', margin: 0 }}>
-              Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
+              Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Modernized for founders by TechTO.
             </p>
           </div>
 
@@ -1157,7 +1176,7 @@
                 Startup Growth Calculator
               </h1>
               <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
-                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
+                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Modernized for founders by TechTO.
               </p>
             </div>
 
@@ -1183,12 +1202,10 @@
                   {showExact ? 'hide exact numbers' : 'enter exact numbers'}
                 </a>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  {isMobile && (
-                    <a onClick={() => setUseMobileUI(true)}
-                      style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
-                      mobile
-                    </a>
-                  )}
+                  <a onClick={() => setUseMobileUI(true)}
+                    style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                    mobile
+                  </a>
                   <a onClick={() => { setRev0(10000); setExp0(50000); setGrowth(0.10); setExpGrowth(0); }}
                     style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
                     reset
@@ -1270,7 +1287,7 @@
                 Startup Growth Calculator
               </h1>
               <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
-                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
+                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Modernized for founders by TechTO.
               </p>
             </div>
             {/* Milestones Panel */}
