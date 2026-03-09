@@ -385,7 +385,7 @@
     // Source: https://gitlab.com/tlb/startuptools
     // Trevor's chart uses HTML5 Canvas; this is an SVG port of his exact logic.
 
-    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth, summaryText, capitalNeeded }) {
+    function GrowthChart({ rev0, exp0, expGrowth, growth, onRev, onExp, onGrowth, capitalNeeded }) {
       const svgRef = useRef(null);
       const containerRef = useRef(null);
       const dragging = useRef(null);
@@ -909,14 +909,6 @@
           <circle cx={p0X} cy={expY} r={dragRad} fill="#ff5252" stroke="#cc1a1a" strokeWidth={dragRad/4} style={{ pointerEvents: 'none' }} />
           <circle cx={p0X} cy={expY} r={dragRad * 0.25} fill="#ff9090" style={{ pointerEvents: 'none' }} />
 
-          {/* ── Summary sentence — right-aligned just above x-axis (desktop only) ── */}
-          {summaryText && !isMobile && (
-            <text x={plotR} y={plotB - 8} textAnchor="end" fontSize="11" fontFamily={font}
-              fill="#9ca3af" letterSpacing="0.08em" dominantBaseline="bottom"
-              style={{ pointerEvents: 'none' }}>
-              {summaryText.toUpperCase()}
-            </text>
-          )}
 
           {/* ── Legend: rendered last so it paints over everything ── */}
           {(earlyTight || isMobile || tightCap) && (() => {
@@ -966,13 +958,6 @@
             );
           })()}
         </svg>
-          {/* Mobile callout */}
-          {isMobile && summaryText && (
-            <div style={{ marginTop: '8px', textAlign: 'center', fontFamily: 'Artex, sans-serif',
-              fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              {summaryText}
-            </div>
-          )}
         </div>
       );
     }
@@ -1333,14 +1318,7 @@
               <div className="fadein-1 px-3 md:px-0">
                 <GrowthChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth}
                   onRev={setRev0} onExp={setExp0} onGrowth={setGrowth}
-                  capitalNeeded={capitalNeeded}
-                  summaryText={
-                    defaultAlive && breakevenMonth > 0
-                      ? `Profitable in ${Math.ceil(breakevenMonth)} months at ${Math.round(growth * 100)}% growth · ${fmt(capitalNeeded)} needed`
-                      : defaultAlive && breakevenMonth === 0
-                      ? `Already profitable at ${Math.round(growth * 100)}% monthly growth`
-                      : `Costs growing faster than revenue — no profitability`
-                  } />
+                  capitalNeeded={capitalNeeded} />
               </div>
             )}
 
