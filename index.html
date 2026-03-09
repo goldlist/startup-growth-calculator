@@ -34,23 +34,26 @@
     .hero-gradient {
       z-index: 0;
       background-image: linear-gradient(180deg, #ebff52, white);
-      height: 80px;
+      height: 90px;
       position: fixed; top: 0; left: 0; right: 0;
       pointer-events: none;
     }
-    #root { padding-top: 80px; padding-bottom: 140px; }
+    #root { padding-top: 90px; padding-bottom: 140px; }
     .exact-numbers-wrap { padding-left: 16px; }
     .milestones-push { margin-top: 16px; }
     @media (max-width: 639px) {
-      .milestones-push { margin-top: calc(100svh - 80px - 340px); }
+      .milestones-push { margin-top: calc(100svh - 80px - 350px); }
     }
     @media (min-width: 640px) {
       .exact-numbers-wrap { padding-left: calc(77 / 900 * 100%); }
     }
     @media (max-width: 639px) {
-      .hero-gradient { height: 60px; }
-      #root { padding-top: 64px; padding-bottom: 16px; }
+      .hero-gradient { height: 80px; }
+      #root { padding-top: 80px; padding-bottom: 16px; }
     }
+    /* Arrow flips when nav is open */
+    .navbar2_menu-button.w--open .menu-icon2 svg { transform: rotate(180deg); transition: transform 0.3s ease; }
+    .navbar2_menu-button .menu-icon2 svg { transition: transform 0.3s ease; }
     @keyframes techtoFadeUp {
       from { opacity: 0; transform: translate3d(0, 25%, 0); }
       to   { opacity: 1; transform: translate3d(0, 0, 0); }
@@ -1525,6 +1528,30 @@
       function init() { document.querySelectorAll('.button').forEach(addScramble); }
       init();
       new MutationObserver(init).observe(document.body, { childList: true, subtree: true });
+    })();
+
+    // Mobile nav toggle (replaces webflow.js behaviour)
+    (function () {
+      const btn  = document.querySelector('.w-nav-button');
+      const menu = document.querySelector('.w-nav-menu');
+      if (!btn || !menu) return;
+      btn.addEventListener('click', function () {
+        const isOpen = btn.classList.contains('w--open');
+        if (isOpen) {
+          btn.classList.remove('w--open');
+          menu.removeAttribute('data-nav-menu-open');
+        } else {
+          btn.classList.add('w--open');
+          menu.setAttribute('data-nav-menu-open', '');
+        }
+      });
+      // Close on outside click
+      document.addEventListener('click', function (e) {
+        if (!btn.contains(e.target) && !menu.contains(e.target)) {
+          btn.classList.remove('w--open');
+          menu.removeAttribute('data-nav-menu-open');
+        }
+      });
     })();
   </script>
 </body>
