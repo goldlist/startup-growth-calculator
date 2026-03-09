@@ -165,36 +165,14 @@
 
     // ─── Mobile chart — same visual language as desktop, display-only ────────────
     function MobileSimpleChart({ rev0, exp0, expGrowth, growth, breakevenMonth, onRev, onExp, onGrowth }) {
-      const [, forceRender] = useState(0);
-      const logMinRef = useRef(null);
-      const logMaxRef = useRef(null);
-      const rafRef    = useRef(null);
-      const initialized = useRef(false);
       const svgRef  = useRef(null);
       const dragRef = useRef(null);
-      if (!initialized.current) {
-        initialized.current = true;
-        const { lMin, lMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
-        logMinRef.current = lMin;
-        logMaxRef.current = lMax;
-      }
-      useEffect(() => {
-        const { lMin: tMin, lMax: tMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        const factor = 0.4, tol = 0.008;
-        function animate() {
-          const dMin = tMin - logMinRef.current, dMax = tMax - logMaxRef.current;
-          if (Math.abs(dMin) < tol && Math.abs(dMax) < tol) {
-            logMinRef.current = tMin; logMaxRef.current = tMax;
-            forceRender(n => n + 1); rafRef.current = null; return;
-          }
-          logMinRef.current += dMin * factor; logMaxRef.current += dMax * factor;
-          forceRender(n => n + 1);
-          rafRef.current = requestAnimationFrame(animate);
-        }
-        rafRef.current = requestAnimationFrame(animate);
-      }, [rev0, exp0, expGrowth, growth]);
-      useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+      const logMinRef = useRef(null);
+      const logMaxRef = useRef(null);
+      // Compute Y-axis range synchronously — no animation RAF, no forceRender
+      const { lMin, lMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
+      logMinRef.current = lMin;
+      logMaxRef.current = lMax;
 
       const W = 500, H = 300, plotL = 52, plotR = 488, plotT = 14, plotB = 268, nMonths = 36;
       const font = 'Artex, system-ui, sans-serif';
@@ -411,44 +389,14 @@
       const svgRef = useRef(null);
       const containerRef = useRef(null);
       const dragging = useRef(null);
-      const [, forceRender] = useState(0);
       const [containerW, setContainerW] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 900);
 
-      // ── Dynamic Y-axis auto-zoom ──────────────────────────────────────────
+      // Compute Y-axis range synchronously — no animation RAF, no forceRender
       const logMinRef = useRef(null);
       const logMaxRef = useRef(null);
-      const rafRef = useRef(null);
-      const initialized = useRef(false);
-      if (!initialized.current) {
-        initialized.current = true;
-        const { lMin, lMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
-        logMinRef.current = lMin;
-        logMaxRef.current = lMax;
-      }
-
-      useEffect(() => {
-        const { lMin: tMin, lMax: tMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        const factor = 0.4, tol = 0.008;
-        function animate() {
-          const dMin = tMin - logMinRef.current;
-          const dMax = tMax - logMaxRef.current;
-          if (Math.abs(dMin) < tol && Math.abs(dMax) < tol) {
-            logMinRef.current = tMin;
-            logMaxRef.current = tMax;
-            forceRender(n => n + 1);
-            rafRef.current = null;
-            return;
-          }
-          logMinRef.current += dMin * factor;
-          logMaxRef.current += dMax * factor;
-          forceRender(n => n + 1);
-          rafRef.current = requestAnimationFrame(animate);
-        }
-        rafRef.current = requestAnimationFrame(animate);
-      }, [rev0, exp0, expGrowth, growth]);
-
-      useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+      const { lMin, lMax } = computeTargetLogRange(rev0, exp0, expGrowth, growth);
+      logMinRef.current = lMin;
+      logMaxRef.current = lMax;
 
       useEffect(() => {
         const el = containerRef.current;
