@@ -946,6 +946,19 @@
       return (
         <div style={{ fontFamily: 'Artex, system-ui, sans-serif', backgroundColor: '#fff', paddingBottom: '220px' }}>
 
+          {/* ── Header ── */}
+          <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f3f4f6' }}>
+            <h1 style={{ fontFamily: 'Feature Display, serif', fontSize: '22px', fontWeight: 'normal', margin: '0 0 4px 0', lineHeight: 1.1 }}>Startup Growth Calculator</h1>
+            <p style={{ fontSize: '11px', color: '#9ca3af', margin: 0 }}>
+              Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
+            </p>
+          </div>
+
+          {/* ── Chart ── */}
+          <div style={{ padding: '10px 12px 4px', borderBottom: '1px solid #f3f4f6' }}>
+            <MobileSimpleChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth} breakevenMonth={breakevenMonth} />
+          </div>
+
           {/* ── Sliders ── */}
           <div style={{ padding: '20px 16px 0' }}>
             <div style={{ marginBottom: '24px' }}>
@@ -985,12 +998,7 @@
             </div>
           </div>
 
-          {/* ── Chart ── */}
-          <div style={{ padding: '10px 12px 4px', borderBottom: '1px solid #f3f4f6' }}>
-            <MobileSimpleChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth} breakevenMonth={breakevenMonth} />
-          </div>
-
-          {/* ── Answer ── */}
+          {/* ── Result ── */}
           <div style={{ padding: '16px', background: verdictBg, borderBottom: `1px solid ${verdictBorder}` }}>
             <div style={{ fontSize: '10px', fontWeight: 700, color: verdictColor, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '6px' }}>
               {verdictTag}
@@ -1001,12 +1009,8 @@
             {subline && <div style={{ fontSize: '13px', color: '#6b7280' }}>{subline}</div>}
           </div>
 
-          {/* ── Title + milestones ── */}
+          {/* ── Milestones ── */}
           <div style={{ padding: '20px 16px 0' }}>
-            <h1 style={{ fontFamily: 'Feature Display, serif', fontSize: '22px', fontWeight: 'normal', margin: '0 0 4px 0', lineHeight: 1.1 }}>Startup Growth Calculator</h1>
-            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 20px 0' }}>
-              Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
-            </p>
             <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               At your current growth rate, here's when you'll hit milestones.
             </p>
