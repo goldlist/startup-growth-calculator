@@ -258,10 +258,11 @@
           {/* X-axis labels */}
           {[0,1,2,3].map(yr => {
             const x = convMonthToX(yr * 12);
+            const anchor = yr === 3 ? 'end' : yr === 0 ? 'start' : 'middle';
             return (
               <g key={yr}>
                 <line x1={x} y1={plotB} x2={x} y2={plotB + 5} stroke="#888" strokeWidth="1" />
-                <text x={x} y={plotB + 15} textAnchor="middle" dominantBaseline="top" fontSize="13" fontFamily={font} fill="#888">
+                <text x={x} y={plotB + 15} textAnchor={anchor} dominantBaseline="top" fontSize="13" fontFamily={font} fill="#888">
                   {yr === 0 ? 'today' : `year ${yr}`}
                 </text>
               </g>
