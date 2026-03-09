@@ -51,8 +51,9 @@
       .hero-gradient { height: 80px; }
       #root { padding-top: 80px; padding-bottom: 16px; }
     }
-    /* Arrow flips when nav is open */
-    .navbar2_menu-button.w--open .menu-icon2 svg { transform: rotate(180deg); transition: transform 0.3s ease; }
+    /* Arrow flips when nav is open and stays above the overlay */
+    .navbar2_button-wrapper { position: relative; z-index: 9999999 !important; }
+    .navbar2_menu-button.w--open .menu-icon2 svg { transform: rotate(180deg); }
     .navbar2_menu-button .menu-icon2 svg { transition: transform 0.3s ease; }
     @keyframes techtoFadeUp {
       from { opacity: 0; transform: translate3d(0, 25%, 0); }
