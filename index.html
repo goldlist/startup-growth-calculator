@@ -195,7 +195,7 @@
       const H = isMobile ? 540 : 500;
       const labelW = isMobile ? 56 : 72;
       const plotL = 5 + labelW;
-      const plotR = W - (isMobile ? 12 : 20);
+      const plotR = W - (isMobile ? 38 : 20);
       const plotT = isMobile ? 38 : 45;
       const plotB = H - (isMobile ? 38 : 35);
       const dragRad = isMobile ? 13 : 7;
@@ -634,7 +634,7 @@
               <g key={yr}>
                 <line x1={x} y1={plotB} x2={x} y2={plotB + 5} stroke="#888" strokeWidth="1" />
                 <text x={x} y={plotB + 17} textAnchor="middle" fontSize={fsXLabel} fontFamily={font} fill="#888" dominantBaseline="top">
-                  {yr === 0 ? 'today' : yr === 3 ? '3 years' : `year ${yr}`}
+                  {yr === 0 ? 'today' : `year ${yr}`}
                 </text>
               </g>
             );
@@ -760,6 +760,13 @@
       const [growth,    setGrowth]    = useState(defaults.g);
       const [expGrowth, setExpGrowth] = useState(defaults.eg);
       const [showExact, setShowExact] = useState(false);
+      const [scrolled,  setScrolled]  = useState(false);
+
+      useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 150);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+      }, []);
 
       useEffect(() => {
         const p = new URLSearchParams({ r: Math.round(rev0), e: Math.round(exp0), g: growth.toFixed(4), eg: expGrowth.toFixed(4) });
@@ -816,7 +823,7 @@
 
       return (
         <div style={{ backgroundColor: '#fff', fontFamily: 'Artex, system-ui, sans-serif' }}>
-          <main className="max-w-5xl mx-auto pt-2 pb-3">
+          <main className="max-w-5xl mx-auto pt-2 pb-3" style={{ paddingBottom: '240px' }}>
 
             <div className="hidden md:block px-4" style={{ marginBottom: '12px', marginTop: '24px' }}>
               <h1 style={{ fontFamily: 'Feature Display, serif', fontSize: '28px', fontWeight: 'normal', margin: '0 0 4px 0', lineHeight: 1.1 }}>
@@ -827,7 +834,7 @@
               </p>
             </div>
 
-            <div className="fadein-1">
+            <div className="fadein-1 px-3 md:px-0">
               <GrowthChart rev0={rev0} exp0={exp0} expGrowth={expGrowth} growth={growth}
                 onRev={setRev0} onExp={setExp0} onGrowth={setGrowth}
                 capitalNeeded={capitalNeeded}
@@ -922,6 +929,15 @@
             </div>
 
             <div className="px-4">
+            {/* Mobile title — shown on mobile only, above milestones */}
+            <div className="block md:hidden" style={{ marginBottom: '16px', marginTop: '16px' }}>
+              <h1 style={{ fontFamily: 'Feature Display, serif', fontSize: '24px', fontWeight: 'normal', margin: '0 0 4px 0', lineHeight: 1.1 }}>
+                Startup Growth Calculator
+              </h1>
+              <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
+                Inspired by <a href="https://growth.tlb.org/" style={{ color: 'inherit', textDecoration: 'underline' }}>Trevor Blackwell's calculator</a> and <a href="https://www.paulgraham.com/aord.html" style={{ color: 'inherit', textDecoration: 'underline' }}>Paul Graham's essay</a>. Built for founders by TechTO.
+              </p>
+            </div>
             {/* Milestones Panel */}
             <div style={{ marginBottom: '20px', marginTop: '16px' }}>
               <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -1034,8 +1050,8 @@
 
           </main>
 
-          {/* Fixed bottom dock — desktop only */}
-          <div className="hidden md:block" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10, background: '#fff' }}>
+          {/* Fixed bottom dock — desktop always, mobile when scrolled */}
+          <div className={scrolled ? 'block' : 'hidden md:block'} style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10, background: '#fff' }}>
             <div className="fadein-6 padding-global">
               <div className="container-large">
                 <div className="padding-bottom padding-medium">
